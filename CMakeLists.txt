@@ -1,68 +1,223 @@
-# CMake build written by Kyle Gerheiser
-
-# Requires CMake 3.19 for JSON strings
 cmake_minimum_required(VERSION 3.19)
 
-# Get VERSION from VERSION file
-file(STRINGS "VERSION" pVersion)
+#[==============================================================================[
+#                         Basic project definition                              #
+#]==============================================================================]
 
-project(
-  WW3
-  VERSION ${pVersion}
-  LANGUAGES C Fortran)
+project(WW3
+        DESCRIPTION "WAVEWATCH III numerical wave model"
+        HOMEPAGE_URL https://github.com/ACCESS-NRI/WW3/
+        LANGUAGES C Fortran)
 
-get_directory_property(hasParent PARENT_DIRECTORY)
-if(hasParent)
-  # Unset flags that come from Parent (ie UFS or other coupled build) 
-  # for potential (-r8/-r4) conflict
-  set(CMAKE_Fortran_FLAGS "")
-  set(CMAKE_C_FLAGS "")
-  remove_definitions(-DDEBUG)
+#[==============================================================================[
+#                                   Options                                     #
+#]==============================================================================]
+
+## List of switches
+list(APPEND switches "CESMCOUPLED" "DIST" "MPI" "PR1" "FLX4" "ST6" "STAB0" "LN1" "NL1" "BT1" "DB1" "MLIM" "TR0" "BS0" "RWND" "WNX1" "WNT0" "CRX1" "CRT0" "O0" "O1" "O2" "O3" "O4" "O5" "O6" "O7" "O14" "O15" "IS2" "REF0" "NOGRB" "IC3")
+
+## Global compile definitions
+foreach(switch ${switches})
+  add_compile_definitions(W3_${switch})
+endforeach()
+
+option(ACCESS3_WW3          "Use ACCESS3 dependencies and install ACCESS3 libraries" OFF)
+message(STATUS "  - ACCESS3_WW3   ${ACCESS3_WW3}")
+
+if(NOT ACCESS3_WW3)
+  message(FATAL_ERROR " ACCESS3_WW3 is only supported build, set to ON")
 endif()
 
-set(valid_caps "MULTI_ESMF" "NUOPC_MESH")
+if(ACCESS3_WW3)
+  option(CESMCOUPLED           "CESMCOUPLED Build CPP" OFF)
+  message(STATUS "  - CESMCOUPLED   ${CESMCOUPLED}")
+endif()
 
-set(UFS_CAP "" CACHE STRING "Valid options are ${valid_caps}")
-set(NETCDF ON CACHE BOOL "Build NetCDF programs (requires NetCDF)")
-set(ENDIAN "BIG" CACHE STRING "Endianness of unformatted output files. Valid values are 'BIG', 'LITTLE', 'NATIVE'.") 
-set(EXCLUDE_FIND "" CACHE STRING "Don't try and search for these libraries (assumd to be handled by the compiler/wrapper)")
+#[==============================================================================[
+#                           Project configuration                               #
+#]==============================================================================]
 
-# make sure all "exclude_find" entries are lower case
-list(TRANSFORM EXCLUDE_FIND TOLOWER)
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
+include(CMakePackageConfigHelpers)
+include(GNUInstallDirs)
+include(FortranLib)
 
-# Make Find modules visible to CMake
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
-
-# Set switch file on command line when running CMake
-set(SWITCH "" CACHE STRING "Switch file, either full path, relative path from location of top-level WW3/ dir, or a switch in model/bin")
-
-# Search for switch file as a full path or in model/bin
-if(EXISTS ${SWITCH})
-  set(switch_file ${SWITCH})
+# Common compiler flags and definitions
+if(CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
+  set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -fbacktrace -fconvert=big-endian -ffree-line-length-none -ffixed-line-length-none")
+  if(${CMAKE_Fortran_COMPILER_VERSION} VERSION_GREATER_EQUAL 10)
+    set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -fallow-argument-mismatch")
+  endif()
+  set(CMAKE_Fortran_FLAGS_RELEASE "-O")
+  set(CMAKE_Fortran_FLAGS_DEBUG "-g -Wall -Og -ffpe-trap=zero,overflow -fcheck=bounds")
+elseif(CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
+  set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -qno-opt-dynamic-align  -convert big_endian -assume byterecl -ftz -traceback -assume realloc_lhs -fp-model precise")
+  set(CMAKE_Fortran_FLAGS_RELEASE "-O2 -debug minimal")
+  set(CMAKE_Fortran_FLAGS_DEBUG "-O0 -g -check uninit -check bounds -check pointers -fpe0 -check noarg_temp_created")
 else()
-  set(switch_file ${CMAKE_CURRENT_SOURCE_DIR}/model/bin/switch_${SWITCH})
-  if(NOT EXISTS ${switch_file})
-    message(FATAL_ERROR "Switch file '${switch_file}' does not exist, set switch with -DSWITCH=<switch>")
-  endif()
+  message(WARNING "Fortran compiler with ID ${CMAKE_Fortran_COMPILER_ID} will be used with CMake default options")
 endif()
 
-if(UFS_CAP)
-  if(NOT UFS_CAP IN_LIST valid_caps)
-    message(FATAL_ERROR "Invalid UFS_CAP selection. Valids options are ${valid_caps}")
-  endif()
+if(CMAKE_C_COMPILER_ID MATCHES "GNU")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99")
+  set(CMAKE_C_FLAGS_RELEASE "-O")
+  set(CMAKE_C_FLAGS_DEBUG "-g -Wall -Og -fbacktrace -ffpe-trap=invalid,zero,overflow -fcheck=bounds")
+elseif(CMAKE_C_COMPILER_ID MATCHES "Intel")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -traceback -qno-opt-dynamic-align -fp-model precise -std=gnu99")
+  set(CMAKE_C_FLAGS_RELEASE "-O2 -debug minimal")
+  set(CMAKE_C_FLAGS_DEBUG "-O0 -g")
+else()
+  message(WARNING "C compiler with ID ${CMAKE_C_COMPILER_ID} will be used with CMake default options")
 endif()
 
-message(STATUS "Build with switch: ${switch_file}")
-# Copy switch file to build dir
-configure_file(${switch_file} ${CMAKE_BINARY_DIR}/switch COPYONLY)
-
-# Re-configure CMake when switch changes
-set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${CMAKE_BINARY_DIR}/switch)
-
-if(NOT CMAKE_BUILD_TYPE MATCHES "^(Debug|Release|RelWithDebInfo|MinSizeRel)$")
-  message(STATUS "Setting build type to 'Release' as none was specified.")
-  set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type" FORCE)
-  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
+if (CESMCOUPLED)
+  add_compile_definitions(
+    CESMCOUPLED
+  )
 endif()
 
-add_subdirectory(model)
+## Fortran modules path; currently this is simply set to be the include dir
+set(CMAKE_INSTALL_MODULEDIR ${CMAKE_INSTALL_INCLUDEDIR}
+  CACHE STRING
+  "Fortran module installation path (Not a cmake native variable)"
+)
+
+#[==============================================================================[
+#                              External packages                                #
+#]==============================================================================]
+
+if(ACCESS3_WW3)
+  find_package(Access3Share REQUIRED cdeps timing share nuopc_cap_share) 
+  find_package(ESMF 8.3.0 MODULE REQUIRED)
+endif()
+
+find_package(NetCDF 4.7.3 REQUIRED Fortran)
+
+
+#[==============================================================================[
+#                             Main definitions                                  #
+#]==============================================================================]
+
+## WW3 library
+
+set(SRC "${CMAKE_SOURCE_DIR}/model/src")
+
+add_fortran_library(ww3lib mod STATIC)
+target_include_directories(ww3lib PRIVATE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/model/src>)
+target_compile_definitions(ww3lib PRIVATE ENDIANNESS="big_endian")
+set_property(SOURCE ${SRC}/w3initmd.F90
+  APPEND
+  PROPERTY COMPILE_DEFINITIONS
+  "__WW3_SWITCHES__=\'\'"
+)
+target_link_libraries(ww3lib
+  PUBLIC esmf
+)
+# Process switches and get list of extra source files
+include(${CMAKE_CURRENT_SOURCE_DIR}/model/src/cmake/check_switches.cmake)
+check_switches("${switches}" switch_files)
+message(VERBOSE "WW3 switch files: ${switch_files}")
+
+include(${CMAKE_CURRENT_SOURCE_DIR}/model/src/cmake/src_list.cmake)
+list(APPEND ftn_src ${nuopc_mesh_cap_src})
+
+list(APPEND ftn_src ${switch_files})
+
+foreach(file ${ftn_src} )
+    # list(REMOVE_ITEM srcfiles ${file})
+    list(APPEND srcfiles "${CMAKE_CURRENT_SOURCE_DIR}/model/src/${file}")
+endforeach()
+
+target_sources(ww3lib PRIVATE
+  ${srcfiles}
+)
+
+## Utilities
+
+# ww3_grid
+add_executable(ww3_grid ${SRC}/ww3_grid.F90)
+set_target_properties(ww3_grid PROPERTIES
+  LINKER_LANGUAGE Fortran
+  OUTPUT_NAME ww3_grid
+)
+target_link_libraries(ww3_grid PRIVATE ww3lib)
+
+# ww3_strt
+add_executable(ww3_strt ${SRC}/ww3_strt.F90)
+set_target_properties(ww3_strt PROPERTIES
+  LINKER_LANGUAGE Fortran
+  OUTPUT_NAME ww3_strt
+)
+target_link_libraries(ww3_strt PRIVATE ww3lib)
+
+# ww3_outf
+add_executable(ww3_outf ${SRC}/ww3_outf.F90)
+set_target_properties(ww3_outf PROPERTIES
+  LINKER_LANGUAGE Fortran
+  OUTPUT_NAME ww3_outf
+)
+target_link_libraries(ww3_outf PRIVATE ww3lib)
+
+# ww3_ounf
+add_executable(ww3_ounf)
+target_sources(ww3_ounf PRIVATE
+  ${SRC}/ww3_ounf.F90
+  ${SRC}/w3ounfmetamd.F90
+)
+set_target_properties(ww3_ounf PROPERTIES
+  LINKER_LANGUAGE Fortran
+  OUTPUT_NAME ww3_ounf
+)
+target_link_libraries(ww3_ounf PRIVATE ww3lib)
+
+# ww3_ounp
+add_executable(ww3_ounp ${SRC}/ww3_ounp.F90)
+set_target_properties(ww3_ounp PROPERTIES
+  LINKER_LANGUAGE Fortran
+  OUTPUT_NAME ww3_ounp
+)
+target_link_libraries(ww3_ounp PRIVATE ww3lib)
+
+### Install and Export
+
+## Library
+if(ACCESS3_WW3)
+  set_target_properties(ww3lib PROPERTIES
+    OUTPUT_NAME access-ww3lib
+    EXPORT_NAME ww3lib
+  )
+  install(TARGETS ww3lib
+    EXPORT Ww3libTargets
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT AccessWW3Cmeps_RunTime NAMELINK_COMPONENT AccessWW3Cmeps_Development
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT AccessWW3Cmeps_Development
+  )
+  # Fortran module files are a special case, as currently there is no standard
+  # way of handling them in CMake
+  target_include_directories(ww3lib PUBLIC "$<INSTALL_INTERFACE:${CMAKE_INSTALL_MODULEDIR}/access-ww3>")
+  get_target_property(ww3_moddir ww3lib Fortran_MODULE_DIRECTORY)
+  install(FILES ${ww3_moddir}/wav_comp_nuopc.mod
+    DESTINATION ${CMAKE_INSTALL_MODULEDIR}/access-ww3
+    COMPONENT AccessWW3Cmeps_Development
+  )
+  install(EXPORT Ww3libTargets
+    FILE Ww3libTargets.cmake
+    NAMESPACE Access3::
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/Ww3lib
+  )
+
+  # Make sure the dependencies get exported too
+  configure_package_config_file(
+    cmake/Access3Ww3libConfig.cmake.in
+    "${CMAKE_CURRENT_BINARY_DIR}/Ww3libConfig.cmake"
+    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/Ww3lib
+  )
+    
+  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/Ww3libConfig.cmake
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/Ww3lib
+    COMPONENT AccessWW3Cmeps_Development 
+  )
+endif()
+
+## Utilities
+install(TARGETS ww3_grid ww3_strt ww3_outf ww3_ounf ww3_ounp
+RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
