@@ -91,8 +91,8 @@ if(ACCESS3_WW3)
   find_package(ESMF 8.3.0 MODULE REQUIRED)
 endif()
 
-find_package(NetCDF 4.7.3 REQUIRED Fortran)
-
+# find_package(NetCDF 4.7.3 REQUIRED Fortran)
+find_package(MPI REQUIRED)
 
 #[==============================================================================[
 #                             Main definitions                                  #
