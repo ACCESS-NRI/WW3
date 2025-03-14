@@ -21,17 +21,24 @@ foreach(switch ${switches})
   add_compile_definitions(W3_${switch})
 endforeach()
 
-option(ACCESS3_WW3          "Use ACCESS3 dependencies and install ACCESS3 libraries" OFF)
+option(ACCESS3_WW3     "Use ACCESS3 dependencies and install ACCESS3 libraries" OFF)
+option(OPENMP          "Enable OpenMP threading" OFF)
 message(STATUS "  - ACCESS3_WW3   ${ACCESS3_WW3}")
+message(STATUS "  - OPENMP        ${OPENMP}")
 
 if(NOT ACCESS3_WW3)
-  message(FATAL_ERROR " ACCESS3_WW3 is only supported build, set to ON")
+  message(STATUS " - NOT ACCESS3_WW3: Building standalone ww3_shel for testing")
 endif()
 
 if(ACCESS3_WW3)
   option(CESMCOUPLED           "CESMCOUPLED Build CPP" OFF)
   message(STATUS "  - CESMCOUPLED   ${CESMCOUPLED}")
 endif()
+
+if(OPENMP)
+  list(APPEND switches "OMPG")
+endif()
+
 
 #[==============================================================================[
 #                           Project configuration                               #
@@ -73,6 +80,7 @@ endif()
 if (CESMCOUPLED)
   add_compile_definitions(
     CESMCOUPLED
+    W3_CESMCOUPLED
   )
 endif()
 
@@ -86,13 +94,16 @@ set(CMAKE_INSTALL_MODULEDIR ${CMAKE_INSTALL_INCLUDEDIR}
 #                              External packages                                #
 #]==============================================================================]
 
+find_package(NetCDF 4.7.3 MODULE REQUIRED Fortran)
+
 if(ACCESS3_WW3)
   find_package(Access3Share REQUIRED cdeps timing share nuopc_cap_share) 
   find_package(ESMF 8.3.0 MODULE REQUIRED)
 endif()
 
-find_package(NetCDF 4.7.3 REQUIRED Fortran)
-
+if(OPENMP)
+  find_package(OpenMP REQUIRED COMPONENTS Fortran)
+endif()
 
 #[==============================================================================[
 #                             Main definitions                                  #
@@ -110,21 +121,30 @@ set_property(SOURCE ${SRC}/w3initmd.F90
   PROPERTY COMPILE_DEFINITIONS
   "__WW3_SWITCHES__=\'\'"
 )
-target_link_libraries(ww3lib
-  PUBLIC esmf
-)
+target_link_libraries(ww3lib PUBLIC NetCDF::NetCDF_Fortran)
+
+if(ACCESS3_WW3)
+  target_link_libraries(ww3lib PUBLIC esmf)
+endif()
+
+if(OpenMP_Fortran_FOUND)
+  target_link_libraries(ww3lib PUBLIC OpenMP::OpenMP_Fortran)
+endif()
+
 # Process switches and get list of extra source files
 include(${CMAKE_CURRENT_SOURCE_DIR}/model/src/cmake/check_switches.cmake)
 check_switches("${switches}" switch_files)
 message(VERBOSE "WW3 switch files: ${switch_files}")
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/model/src/cmake/src_list.cmake)
-list(APPEND ftn_src ${nuopc_mesh_cap_src})
+
+if(ACCESS3_WW3)
+  list(APPEND ftn_src ${nuopc_mesh_cap_src})
+endif()
 
 list(APPEND ftn_src ${switch_files})
 
 foreach(file ${ftn_src} )
-    # list(REMOVE_ITEM srcfiles ${file})
     list(APPEND srcfiles "${CMAKE_CURRENT_SOURCE_DIR}/model/src/${file}")
 endforeach()
 
@@ -132,51 +152,34 @@ target_sources(ww3lib PRIVATE
   ${srcfiles}
 )
 
+
+
 ## Utilities
+# Always build utilities:
+set(utility_apps ww3_grid ww3_strt ww3_outf ww3_ounf ww3_ounp)
+if(NOT ACCESS3_WW3)
+  # A generic WW3 "shell" for testing
+  list(APPEND utility_apps ww3_shel)
+endif()
+  #to-do: confim when other utilities are needed:
+  # ww3_bound ww3_outp ww3_trck ww3_grib
+  # ww3_gint gx_outf gx_outp ww3_uprstr ww3_prep ww3_gspl ww3_multi ww3_systrk
+  # ww3_ounf ww3_ounp ww3_bounc ww3_trnc ww3_prnc
 
-# ww3_grid
-add_executable(ww3_grid ${SRC}/ww3_grid.F90)
-set_target_properties(ww3_grid PROPERTIES
-  LINKER_LANGUAGE Fortran
-  OUTPUT_NAME ww3_grid
-)
-target_link_libraries(ww3_grid PRIVATE ww3lib)
+foreach(program ${utility_apps})
+  add_executable(${program} ${SRC}/${program}.F90)
+  set_target_properties(${program} PROPERTIES
+    LINKER_LANGUAGE Fortran
+    OUTPUT_NAME ${program}
+  )
+  target_link_libraries(${program} PRIVATE ww3lib)
+endforeach()
 
-# ww3_strt
-add_executable(ww3_strt ${SRC}/ww3_strt.F90)
-set_target_properties(ww3_strt PROPERTIES
-  LINKER_LANGUAGE Fortran
-  OUTPUT_NAME ww3_strt
-)
-target_link_libraries(ww3_strt PRIVATE ww3lib)
-
-# ww3_outf
-add_executable(ww3_outf ${SRC}/ww3_outf.F90)
-set_target_properties(ww3_outf PROPERTIES
-  LINKER_LANGUAGE Fortran
-  OUTPUT_NAME ww3_outf
-)
-target_link_libraries(ww3_outf PRIVATE ww3lib)
-
-# ww3_ounf
-add_executable(ww3_ounf)
+# ww3_ounf has en extra file
 target_sources(ww3_ounf PRIVATE
-  ${SRC}/ww3_ounf.F90
   ${SRC}/w3ounfmetamd.F90
 )
-set_target_properties(ww3_ounf PROPERTIES
-  LINKER_LANGUAGE Fortran
-  OUTPUT_NAME ww3_ounf
-)
-target_link_libraries(ww3_ounf PRIVATE ww3lib)
 
-# ww3_ounp
-add_executable(ww3_ounp ${SRC}/ww3_ounp.F90)
-set_target_properties(ww3_ounp PROPERTIES
-  LINKER_LANGUAGE Fortran
-  OUTPUT_NAME ww3_ounp
-)
-target_link_libraries(ww3_ounp PRIVATE ww3lib)
 
 ### Install and Export
 
@@ -219,5 +222,5 @@ if(ACCESS3_WW3)
 endif()
 
 ## Utilities
-install(TARGETS ww3_grid ww3_strt ww3_outf ww3_ounf ww3_ounp
+install(TARGETS ${utility_apps}
 RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})

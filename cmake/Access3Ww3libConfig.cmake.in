@@ -1,5 +1,9 @@
 @PACKAGE_INIT@
 
+if(@OPENMP@)
+  find_package(OpenMP REQUIRED)
+endif()
+
 # Request components
 set(_required_components ${Ww3lib_FIND_COMPONENTS})
 
