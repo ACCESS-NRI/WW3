@@ -222,5 +222,10 @@ if(ACCESS3_WW3)
 endif()
 
 ## Utilities
+<<<<<<< HEAD
 install(TARGETS ${utility_apps}
 RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+=======
+install(TARGETS ww3_grid ww3_strt ww3_outf ww3_ounf ww3_ounp
+RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+>>>>>>> origin/1-cmake_build
