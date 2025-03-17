@@ -30,8 +30,6 @@ if(OPENMP)
   list(APPEND switches "OMPG")
 endif()
 
-set(NETCDF ON CACHE BOOL "Build NetCDF programs (requires NetCDF)")
-set(ENDIAN "BIG" CACHE STRING "Endianness of unformatted output files. Valid values are 'BIG', 'LITTLE', 'NATIVE'.") 
 
 
 #[==============================================================================[
