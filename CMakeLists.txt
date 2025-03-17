@@ -14,12 +14,8 @@ project(WW3
 #]==============================================================================]
 
 ## List of switches
+# to-do: make configurable 
 list(APPEND switches "CESMCOUPLED" "DIST" "MPI" "PR1" "FLX4" "ST6" "STAB0" "LN1" "NL1" "BT1" "DB1" "MLIM" "TR0" "BS0" "RWND" "WNX1" "WNT0" "CRX1" "CRT0" "O0" "O1" "O2" "O3" "O4" "O5" "O6" "O7" "O14" "O15" "IS2" "REF0" "NOGRB" "IC3")
-
-## Global compile definitions
-foreach(switch ${switches})
-  add_compile_definitions(W3_${switch})
-endforeach()
 
 option(ACCESS3_WW3     "Use ACCESS3 dependencies and install ACCESS3 libraries" OFF)
 option(OPENMP          "Enable OpenMP threading" OFF)
@@ -30,21 +26,22 @@ if(NOT ACCESS3_WW3)
   message(STATUS " - NOT ACCESS3_WW3: Building standalone ww3_shel for testing")
 endif()
 
-if(ACCESS3_WW3)
-  option(CESMCOUPLED           "CESMCOUPLED Build CPP" OFF)
-  message(STATUS "  - CESMCOUPLED   ${CESMCOUPLED}")
-endif()
-
 if(OPENMP)
   list(APPEND switches "OMPG")
 endif()
+
+set(NETCDF ON CACHE BOOL "Build NetCDF programs (requires NetCDF)")
+set(ENDIAN "BIG" CACHE STRING "Endianness of unformatted output files. Valid values are 'BIG', 'LITTLE', 'NATIVE'.") 
 
 
 #[==============================================================================[
 #                           Project configuration                               #
 #]==============================================================================]
 
-list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
+
+
 include(CMakePackageConfigHelpers)
 include(GNUInstallDirs)
 include(FortranLib)
@@ -77,11 +74,13 @@ else()
   message(WARNING "C compiler with ID ${CMAKE_C_COMPILER_ID} will be used with CMake default options")
 endif()
 
-if (CESMCOUPLED)
-  add_compile_definitions(
-    CESMCOUPLED
-    W3_CESMCOUPLED
-  )
+## Global compile definitions
+foreach(switch ${switches})
+  add_compile_definitions(W3_${switch})
+endforeach()
+
+if ("CESMCOUPLED" IN_LIST switches)
+  add_compile_definitions(CESMCOUPLED)
 endif()
 
 ## Fortran modules path; currently this is simply set to be the include dir
@@ -144,15 +143,11 @@ endif()
 
 list(APPEND ftn_src ${switch_files})
 
-foreach(file ${ftn_src} )
+foreach(file ${ftn_src})
     list(APPEND srcfiles "${CMAKE_CURRENT_SOURCE_DIR}/model/src/${file}")
 endforeach()
 
-target_sources(ww3lib PRIVATE
-  ${srcfiles}
-)
-
-
+target_sources(ww3lib PRIVATE ${srcfiles}) 
 
 ## Utilities
 # Always build utilities:
@@ -180,8 +175,9 @@ target_sources(ww3_ounf PRIVATE
   ${SRC}/w3ounfmetamd.F90
 )
 
-
-### Install and Export
+#[==============================================================================[
+#                             Install and Export                                  #
+#]==============================================================================]
 
 ## Library
 if(ACCESS3_WW3)
@@ -222,10 +218,6 @@ if(ACCESS3_WW3)
 endif()
 
 ## Utilities
-<<<<<<< HEAD
 install(TARGETS ${utility_apps}
 RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
-=======
-install(TARGETS ww3_grid ww3_strt ww3_outf ww3_ounf ww3_ounp
-RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
->>>>>>> origin/1-cmake_build
+
