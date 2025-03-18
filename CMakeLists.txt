@@ -1,3 +1,5 @@
+# Copyright ACCESS-NRI and contributors. See the top-level LICENSE file for details.
+
 cmake_minimum_required(VERSION 3.19)
 
 #[==============================================================================[
@@ -37,8 +39,6 @@ endif()
 #]==============================================================================]
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
-
-
 
 include(CMakePackageConfigHelpers)
 include(GNUInstallDirs)

@@ -1,3 +1,5 @@
+# Copyright ACCESS-NRI and contributors. See the top-level LICENSE file for details.
+
 function(add_fortran_library LIB MOD_DIR)
     add_library(${LIB} ${ARGN})
 
