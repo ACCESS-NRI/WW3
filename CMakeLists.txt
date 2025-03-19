@@ -97,6 +97,10 @@ find_package(MPI REQUIRED)
 if(ACCESS3_WW3)
   find_package(Access3Share REQUIRED cdeps timing share nuopc_cap_share) 
   find_package(ESMF 8.3.0 MODULE REQUIRED)
+  # ESMF doesn't come linked to PIO library:
+  if (NOT TARGET PIO::PIO_C)
+    find_package(PIO 2.5.3 REQUIRED COMPONENTS C)
+  endif()
 endif()
 
 if(OPENMP)
@@ -122,7 +126,7 @@ set_property(SOURCE ${SRC}/w3initmd.F90
 target_link_libraries(ww3lib PUBLIC NetCDF::NetCDF_Fortran)
 
 if(ACCESS3_WW3)
-  target_link_libraries(ww3lib PUBLIC esmf)
+  target_link_libraries(ww3lib PUBLIC ESMF::ESMF PIO::PIO_C)
 endif()
 
 if(OpenMP_Fortran_FOUND)
