@@ -92,6 +92,7 @@ set(CMAKE_INSTALL_MODULEDIR ${CMAKE_INSTALL_INCLUDEDIR}
 #]==============================================================================]
 
 find_package(NetCDF 4.7.3 MODULE REQUIRED Fortran)
+find_package(MPI REQUIRED)
 
 if(ACCESS3_WW3)
   find_package(Access3Share REQUIRED cdeps timing share nuopc_cap_share) 
@@ -208,7 +209,6 @@ if(ACCESS3_WW3)
     "${CMAKE_CURRENT_BINARY_DIR}/Ww3libConfig.cmake"
     INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/Ww3lib
   )
-    
   install(FILES ${CMAKE_CURRENT_BINARY_DIR}/Ww3libConfig.cmake
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/Ww3lib
     COMPONENT AccessWW3Cmeps_Development 
