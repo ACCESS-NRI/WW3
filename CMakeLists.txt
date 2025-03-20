@@ -91,16 +91,17 @@ set(CMAKE_INSTALL_MODULEDIR ${CMAKE_INSTALL_INCLUDEDIR}
 #                              External packages                                #
 #]==============================================================================]
 
-find_package(NetCDF 4.7.3 MODULE REQUIRED Fortran)
 find_package(MPI REQUIRED)
 
 if(ACCESS3_WW3)
   find_package(Access3Share REQUIRED cdeps timing share nuopc_cap_share) 
-  find_package(ESMF 8.3.0 MODULE REQUIRED)
-  # ESMF doesn't come linked to PIO library:
-  if (NOT TARGET PIO::PIO_C)
-    find_package(PIO 2.5.3 REQUIRED COMPONENTS C)
-  endif()
+  if(NOT TARGET ESMF::ESMF) #Access3Share probably already has ESMF with PUBLIC interface
+    find_package(ESMF 8.3.0 MODULE REQUIRED)
+  endif() 
+endif()
+
+if(NOT TARGET NetCDF::NetCDF_Fortran) #Access3Share probably already has NetCDF with PUBLIC interface
+  find_package(NetCDF 4.7.3 MODULE REQUIRED Fortran)
 endif()
 
 if(OPENMP)
