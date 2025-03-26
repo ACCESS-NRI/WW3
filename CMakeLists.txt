@@ -19,16 +19,16 @@ project(WW3
 # to-do: make configurable 
 list(APPEND switches "CESMCOUPLED" "DIST" "MPI" "PR1" "FLX4" "ST6" "STAB0" "LN1" "NL1" "BT1" "DB1" "MLIM" "TR0" "BS0" "RWND" "WNX1" "WNT0" "CRX1" "CRT0" "O0" "O1" "O2" "O3" "O4" "O5" "O6" "O7" "O14" "O15" "IS2" "REF0" "NOGRB" "IC3")
 
-option(ACCESS3_WW3     "Use ACCESS3 dependencies and install ACCESS3 libraries" OFF)
-option(OPENMP          "Enable OpenMP threading" OFF)
-message(STATUS "  - ACCESS3_WW3   ${ACCESS3_WW3}")
-message(STATUS "  - OPENMP        ${OPENMP}")
+option(WW3_ACCESS3     "Use ACCESS3 dependencies and install ACCESS3 libraries" OFF)
+option(WW3_OPENMP          "Enable OpenMP threading" OFF)
+message(STATUS "  - WW3_ACCESS3   ${WW3_ACCESS3}")
+message(STATUS "  - WW3_OPENMP        ${WW3_OPENMP}")
 
-if(NOT ACCESS3_WW3)
-  message(STATUS " - NOT ACCESS3_WW3: Building standalone ww3_shel for testing")
+if(NOT WW3_ACCESS3)
+  message(STATUS " - NOT WW3_ACCESS3: Building standalone ww3_shel for testing")
 endif()
 
-if(OPENMP)
+if(WW3_OPENMP)
   list(APPEND switches "OMPG")
 endif()
 
@@ -93,7 +93,7 @@ set(CMAKE_INSTALL_MODULEDIR ${CMAKE_INSTALL_INCLUDEDIR}
 
 find_package(MPI REQUIRED)
 
-if(ACCESS3_WW3)
+if(WW3_ACCESS3)
   find_package(Access3Share REQUIRED cdeps timing share nuopc_cap_share) 
   if(NOT TARGET ESMF::ESMF) #Access3Share probably already has ESMF with PUBLIC interface
     find_package(ESMF 8.3.0 MODULE REQUIRED)
@@ -104,7 +104,7 @@ if(NOT TARGET NetCDF::NetCDF_Fortran) #Access3Share probably already has NetCDF 
   find_package(NetCDF 4.7.3 MODULE REQUIRED Fortran)
 endif()
 
-if(OPENMP)
+if(WW3_OPENMP)
   find_package(OpenMP REQUIRED COMPONENTS Fortran)
 endif()
 
@@ -126,7 +126,7 @@ set_property(SOURCE ${SRC}/w3initmd.F90
 )
 target_link_libraries(ww3lib PUBLIC NetCDF::NetCDF_Fortran)
 
-if(ACCESS3_WW3)
+if(WW3_ACCESS3)
   target_link_libraries(ww3lib PUBLIC ESMF::ESMF PIO::PIO_C)
 endif()
 
@@ -141,7 +141,7 @@ message(VERBOSE "WW3 switch files: ${switch_files}")
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/model/src/cmake/src_list.cmake)
 
-if(ACCESS3_WW3)
+if(WW3_ACCESS3)
   list(APPEND ftn_src ${nuopc_mesh_cap_src})
 endif()
 
@@ -156,7 +156,7 @@ target_sources(ww3lib PRIVATE ${srcfiles})
 ## Utilities
 # Always build utilities:
 set(utility_apps ww3_grid ww3_strt ww3_outf ww3_ounf ww3_ounp)
-if(NOT ACCESS3_WW3)
+if(NOT WW3_ACCESS3)
   # A generic WW3 "shell" for testing
   list(APPEND utility_apps ww3_shel)
 endif()
@@ -184,15 +184,15 @@ target_sources(ww3_ounf PRIVATE
 #]==============================================================================]
 
 ## Library
-if(ACCESS3_WW3)
+if(WW3_ACCESS3)
   set_target_properties(ww3lib PROPERTIES
     OUTPUT_NAME access-ww3lib
     EXPORT_NAME ww3lib
   )
   install(TARGETS ww3lib
     EXPORT Ww3libTargets
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT AccessWW3Cmeps_RunTime NAMELINK_COMPONENT AccessWW3Cmeps_Development
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT AccessWW3Cmeps_Development
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT AccessWW3_RunTime NAMELINK_COMPONENT AccessWW3_Development
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT AccessWW3_Development
   )
   # Fortran module files are a special case, as currently there is no standard
   # way of handling them in CMake
@@ -200,7 +200,7 @@ if(ACCESS3_WW3)
   get_target_property(ww3_moddir ww3lib Fortran_MODULE_DIRECTORY)
   install(FILES ${ww3_moddir}/wav_comp_nuopc.mod
     DESTINATION ${CMAKE_INSTALL_MODULEDIR}/access-ww3
-    COMPONENT AccessWW3Cmeps_Development
+    COMPONENT AccessWW3_Development
   )
   install(EXPORT Ww3libTargets
     FILE Ww3libTargets.cmake
@@ -216,7 +216,7 @@ if(ACCESS3_WW3)
   )
   install(FILES ${CMAKE_CURRENT_BINARY_DIR}/Ww3libConfig.cmake
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/Ww3lib
-    COMPONENT AccessWW3Cmeps_Development 
+    COMPONENT AccessWW3_Development 
   )
 endif()
 
