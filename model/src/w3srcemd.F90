@@ -2088,7 +2088,7 @@ CONTAINS
 #ifdef W3_IC3
       CALL W3SIC3 ( SPEC,DEPTH, CG1,  WN1, IX, IY, VSIC, VDIC )
 #endif
-#ifndef W3_IC4_NUMERICS
+#if defined(W3_IC4) && !defined(W3_IC4_NUMERICS)
       CALL W3SIC4 ( SPEC,DEPTH, CG1,       IX, IY, VSIC, VDIC )
 #endif
 #ifdef W3_IC5
@@ -2119,7 +2119,7 @@ CONTAINS
 #ifdef W3_IC3
         ATT=EXP(ICE*VDIC(IS)*DTG)
 #endif
-#ifndef W3_IC4_NUMERICS
+#if defined(W3_IC4) && !defined(W3_IC4_NUMERICS)
        ATT=EXP(ICE*VDIC(IS)*DTG)
 #endif
 #ifdef W3_IC5
