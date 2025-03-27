@@ -102,6 +102,7 @@ endif()
 
 if(NOT TARGET NetCDF::NetCDF_Fortran) #Access3Share probably already has NetCDF with PUBLIC interface
   find_package(NetCDF 4.7.3 MODULE REQUIRED Fortran)
+  # Code has not been tested with versions older than 4.7.3, but probably still works fine
 endif()
 
 if(WW3_OPENMP)
