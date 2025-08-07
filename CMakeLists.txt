@@ -94,7 +94,7 @@ set(CMAKE_INSTALL_MODULEDIR ${CMAKE_INSTALL_INCLUDEDIR}
 find_package(MPI REQUIRED)
 
 if(WW3_ACCESS3)
-  find_package(Access3Share REQUIRED cdeps timing share nuopc_cap_share) 
+  find_package(Access3Share REQUIRED share) 
   if(NOT TARGET ESMF::ESMF) #Access3Share probably already has ESMF with PUBLIC interface
     find_package(ESMF 8.3.0 MODULE REQUIRED)
   endif() 
@@ -128,6 +128,7 @@ set_property(SOURCE ${SRC}/w3initmd.F90
 target_link_libraries(ww3lib PUBLIC NetCDF::NetCDF_Fortran)
 
 if(WW3_ACCESS3)
+  target_link_libraries(ww3lib PRIVATE Access3::share)
   target_link_libraries(ww3lib PUBLIC ESMF::ESMF PIO::PIO_C)
 endif()
 
