@@ -91,7 +91,7 @@ set(CMAKE_INSTALL_MODULEDIR ${CMAKE_INSTALL_INCLUDEDIR}
 #                              External packages                                #
 #]==============================================================================]
 
-find_package(MPI REQUIRED)
+find_package(MPI REQUIRED COMPONENTS Fortran)
 
 if(WW3_ACCESS3)
   find_package(Access3Share REQUIRED share) 
@@ -126,6 +126,7 @@ set_property(SOURCE ${SRC}/w3initmd.F90
   "__WW3_SWITCHES__=\'\'"
 )
 target_link_libraries(ww3lib PUBLIC NetCDF::NetCDF_Fortran)
+target_link_libraries(ww3lib PUBLIC MPI::MPI_Fortran)
 
 if(WW3_ACCESS3)
   target_link_libraries(ww3lib PRIVATE Access3::share)

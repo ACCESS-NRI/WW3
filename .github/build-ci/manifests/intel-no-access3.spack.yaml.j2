@@ -1,0 +1,10 @@
+spack:
+  specs:
+  - access-ww3 @git.{{ ref }} ~access3
+  packages:
+    all:
+      require:
+      - '%{{ intel_compiler }} target={{ target }}'
+  concretizer:
+    unify: false
+  view: false

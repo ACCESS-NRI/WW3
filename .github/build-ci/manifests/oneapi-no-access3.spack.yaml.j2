@@ -1,0 +1,14 @@
+spack:
+  specs:
+    - access-ww3 @git.{{ ref }} ~access3 +openmp
+    - access-ww3 @git.{{ ref }} ~access3
+  packages:
+    gcc-runtime:
+      require:
+      - '%gcc target={{ target }}'
+    all:
+      require:
+      - '%{{ oneapi_compiler }} target={{ target }}'
+  concretizer:
+    unify: false
+  view: false
