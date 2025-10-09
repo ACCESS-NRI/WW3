@@ -1317,16 +1317,10 @@ CONTAINS
       CALL UOST_SRCTRMCOMPUTE(IX, IY, SPEC, CG1, DT,            &
            U10ABS, U10DIR, VSUO, VDUO)
 #endif
-<<<<<<< HEAD
       ! Sea Ice Source Terms if IC_NUMERICS namelist flag = True
       IF (IC_NUMERICS) THEN
 #ifdef W3_IC1
         IF (ICE .GT. 0) CALL W3SIC1 ( SPEC,DEPTH, CG1, IX, IY, VSIC, VDIC )
-=======
-#ifdef W3_IC4_NUMERICS
-        if (ICE.GT.0.01) CALL W3SIC4 ( SPEC,DEPTH, CG1, &
-                                    IX, IY, VSIC, VDIC )
->>>>>>> b6ea8075 (Increase ICE threshold from puny)
 #endif
 #ifdef W3_IS2
         IF (ICE .GT. 0) CALL W3SIS2 ( SPEC, DEPTH, ICE, ICEH, ICEF, ICEDMAX, IX, IY, &
@@ -2121,14 +2115,8 @@ CONTAINS
 #ifdef W3_IC3
         CALL W3SIC3 ( SPEC,DEPTH, CG1,  WN1, IX, IY, VSIC, VDIC )
 #endif
-<<<<<<< HEAD
-#ifdef W3_IC4
-        CALL W3SIC4 ( SPEC,DEPTH, CG1, &
-                                    IX, IY, VSIC, VDIC )
-=======
 #if defined(W3_IC4) && !defined(W3_IC4_NUMERICS)
       CALL W3SIC4 ( SPEC,DEPTH, CG1,       IX, IY, VSIC, VDIC )
->>>>>>> d093162a (Cmake build for ACCESS3 (#2))
 #endif
 #ifdef W3_IC5
         CALL W3SIC5 ( SPEC,DEPTH, CG1,  WN1, IX, IY, VSIC, VDIC )
@@ -2156,13 +2144,8 @@ CONTAINS
 #ifdef W3_IC3
           ATT=EXP(ICE*VDIC(IS)*DTG)
 #endif
-<<<<<<< HEAD
-#ifdef W3_IC4
-          ATT=EXP(ICE*VDIC(IS)*DTG)
-=======
 #if defined(W3_IC4) && !defined(W3_IC4_NUMERICS)
        ATT=EXP(ICE*VDIC(IS)*DTG)
->>>>>>> d093162a (Cmake build for ACCESS3 (#2))
 #endif
 #ifdef W3_IC5
           ATT=EXP(ICE*VDIC(IS)*DTG)
