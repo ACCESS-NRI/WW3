@@ -1317,7 +1317,7 @@ CONTAINS
            U10ABS, U10DIR, VSUO, VDUO)
 #endif
 #ifdef W3_IC4_NUMERICS
-        if (ICE.GT.0) CALL W3SIC4 ( SPEC,DEPTH, CG1, &
+        if (ICE.GT.0.01) CALL W3SIC4 ( SPEC,DEPTH, CG1, &
                                     IX, IY, VSIC, VDIC )
 #endif
       !
