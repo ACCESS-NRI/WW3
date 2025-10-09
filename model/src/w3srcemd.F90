@@ -1317,10 +1317,16 @@ CONTAINS
       CALL UOST_SRCTRMCOMPUTE(IX, IY, SPEC, CG1, DT,            &
            U10ABS, U10DIR, VSUO, VDUO)
 #endif
+<<<<<<< HEAD
       ! Sea Ice Source Terms if IC_NUMERICS namelist flag = True
       IF (IC_NUMERICS) THEN
 #ifdef W3_IC1
         IF (ICE .GT. 0) CALL W3SIC1 ( SPEC,DEPTH, CG1, IX, IY, VSIC, VDIC )
+=======
+#ifdef W3_IC4_NUMERICS
+        if (ICE.GT.0.01) CALL W3SIC4 ( SPEC,DEPTH, CG1, &
+                                    IX, IY, VSIC, VDIC )
+>>>>>>> b6ea8075 (Increase ICE threshold from puny)
 #endif
 #ifdef W3_IS2
         IF (ICE .GT. 0) CALL W3SIS2 ( SPEC, DEPTH, ICE, ICEH, ICEF, ICEDMAX, IX, IY, &
