@@ -17,7 +17,7 @@ project(WW3
 
 ## List of switches
 # to-do: make configurable 
-list(APPEND switches "CESMCOUPLED" "DIST" "MPI" "PR1" "FLX4" "ST6" "STAB0" "LN1" "NL1" "BT1" "DB1" "MLIM" "TR0" "BS0" "RWND" "WNX1" "WNT0" "CRX1" "CRT0" "O0" "O1" "O2" "O3" "O4" "O5" "O6" "O7" "O14" "O15" "IS2" "REF0" "NOGRB" "IC3")
+list(APPEND switches "CESMCOUPLED" "DIST" "MPI" "PR1" "FLX4" "ST6" "STAB0" "LN1" "NL1" "BT1" "DB1" "MLIM" "TR0" "BS0" "RWND" "WNX1" "WNT0" "CRX1" "CRT0" "O0" "O1" "O2" "O3" "O4" "O5" "O6" "O7" "O14" "O15" "IS0" "REF0" "NOGRB" "IC4")
 
 option(WW3_ACCESS3     "Use ACCESS3 dependencies and install ACCESS3 libraries" OFF)
 option(WW3_OPENMP          "Enable OpenMP threading" OFF)
