@@ -148,6 +148,10 @@ contains
     end if
     call fldlist_add(fldsFrWav_num, fldsFrWav, 'Sw_pstokes_x', ungridded_lbound=1, ungridded_ubound=3)
     call fldlist_add(fldsFrWav_num, fldsFrWav, 'Sw_pstokes_y', ungridded_lbound=1, ungridded_ubound=3)
+    call fldlist_add(fldsFrWav_num, fldsFrWav, 'Sw_Hs')
+    call fldlist_add(fldsFrWav_num, fldsFrWav, 'Sw_t01')
+    call fldlist_add(fldsFrWav_num, fldsFrWav, 'Sw_t0m1')
+    call fldlist_add(fldsFrWav_num, fldsFrWav, 'Sw_thm')
 
     ! AA TODO: In the above fldlist_add calls, we are passing hardcoded ungridded_ubound values (3) because, USSPF(2)
     ! is not initialized yet. It is set during w3init which gets called at a later phase (realize). A permanent solution
@@ -589,7 +593,7 @@ contains
     use w3iogomd      , only : CALC_U3STOKES
 #ifdef W3_CESMCOUPLED
     use w3wdatmd      , only : ASF, UST
-    use w3adatmd      , only : USSHX, USSHY, UD, HS
+    use w3adatmd      , only : USSHX, USSHY, UD, HS, T01, T0M1, THM
     use w3idatmd      , only : HSL
 #else
     use wmmdatmd      , only : mdse, mdst, wmsetm
@@ -622,6 +626,10 @@ contains
     !real(r8), pointer :: sw_lasl(:)
     real(r8), pointer :: sw_ustokes(:)
     real(r8), pointer :: sw_vstokes(:)
+    real(r8), pointer :: sw_hs(:)
+    real(r8), pointer :: sw_t01(:)
+    real(r8), pointer :: sw_t0m1(:)
+    real(r8), pointer :: sw_thm(:)
 
     ! d2 is location, d1 is frequency  - nwav_elev_spectrum frequencies will be used
     real(r8), pointer :: wave_elevation_spectrum(:,:)
@@ -740,6 +748,71 @@ contains
       if (ChkErr(rc,__LINE__,u_FILE_u)) return
       call CalcRoughl(z0rlen)
     endif
+
+    if (state_fldchk(exportState, 'Sw_Hs')) then
+      call state_getfldptr(exportState, 'Sw_Hs', Sw_Hs, rc=rc)
+      if (ChkErr(rc,__LINE__,u_FILE_u)) return
+      Sw_Hs(:) = fillvalue
+      do jsea=1, nseal_cpl
+        call init_get_isea(isea, jsea)
+        ix  = mapsf(isea,1)
+        iy  = mapsf(isea,2)
+        if (mapsta(iy,ix) == 1) then
+          Sw_Hs(jsea) = HS(jsea)
+        else
+          Sw_Hs(jsea) = 0.
+        endif
+      enddo
+    end if
+
+    if (state_fldchk(exportState, 'Sw_t01')) then
+      call state_getfldptr(exportState, 'Sw_t01', sw_t01, rc=rc)
+      if (ChkErr(rc,__LINE__,u_FILE_u)) return
+      sw_t01(:) = fillvalue
+      do jsea=1, nseal_cpl
+        call init_get_isea(isea, jsea)
+        ix  = mapsf(isea,1)
+        iy  = mapsf(isea,2)
+        if (mapsta(iy,ix) == 1) then
+          sw_t01(jsea) = t01(jsea)
+        else
+          sw_t01(jsea) = 0.
+        endif
+      enddo
+    end if
+
+    if (state_fldchk(exportState, 'Sw_t0m1')) then
+      call state_getfldptr(exportState, 'Sw_t0m1', sw_t0m1, rc=rc)
+      if (ChkErr(rc,__LINE__,u_FILE_u)) return
+      sw_t0m1(:) = fillvalue
+      do jsea=1, nseal_cpl
+        call init_get_isea(isea, jsea)
+        ix  = mapsf(isea,1)
+        iy  = mapsf(isea,2)
+        if (mapsta(iy,ix) == 1) then
+          sw_t0m1(jsea) = t0m1(jsea)
+        else
+          sw_t0m1(jsea) = 0.
+        endif
+      enddo
+    end if
+
+    if (state_fldchk(exportState, 'Sw_thm')) then
+      call state_getfldptr(exportState, 'Sw_thm', sw_thm, rc=rc)
+      if (ChkErr(rc,__LINE__,u_FILE_u)) return
+      sw_thm(:) = fillvalue
+      do jsea=1, nseal_cpl
+        call init_get_isea(isea, jsea)
+        ix  = mapsf(isea,1)
+        iy  = mapsf(isea,2)
+        if (mapsta(iy,ix) == 1) then
+          sw_thm(jsea) = thm(jsea)
+        else
+          sw_thm(jsea) = 0.
+        endif
+      enddo
+    end if
+
 
     if ( state_fldchk(exportState, 'wbcuru') .and. &
          state_fldchk(exportState, 'wbcurv') .and. &

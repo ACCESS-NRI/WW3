@@ -920,6 +920,10 @@ contains
     real(r8), pointer :: sw_lasl(:)
     real(r8), pointer :: sw_ustokes(:)
     real(r8), pointer :: sw_vstokes(:)
+    real(r8), pointer :: Sw_Hs(:)
+    real(r8), pointer :: Sw_t01(:)
+    real(r8), pointer :: Sw_t0m1(:)
+    real(r8), pointer :: Sw_thm(:)
     real(r8), pointer :: wave_elevation_spectrum(:,:)
     character(len=*),parameter :: subname = '(wav_comp_nuopc:DataInitialize)'
     ! -------------------------------------------------------------------
@@ -966,6 +970,26 @@ contains
       call state_getfldptr(exportState, 'Sw_elevation_spectrum', wave_elevation_spectrum, rc=rc)
       if (ChkErr(rc,__LINE__,u_FILE_u)) return
       wave_elevation_spectrum(:,:) = 0.
+    endif
+    if (state_fldchk(exportState, 'Sw_Hs')) then
+      call state_getfldptr(exportState, 'Sw_Hs', Sw_Hs, rc=rc)
+      if (ChkErr(rc,__LINE__,u_FILE_u)) return
+      Sw_Hs (:) = 0.
+    endif
+    if (state_fldchk(exportState, 'Sw_t01')) then
+      call state_getfldptr(exportState, 'Sw_t01', Sw_t01, rc=rc)
+      if (ChkErr(rc,__LINE__,u_FILE_u)) return
+      Sw_t01 (:) = 0.
+    endif
+    if (state_fldchk(exportState, 'Sw_t0m1')) then
+      call state_getfldptr(exportState, 'Sw_t0m1', Sw_t0m1, rc=rc)
+      if (ChkErr(rc,__LINE__,u_FILE_u)) return
+      Sw_t0m1 (:) = 0.
+    endif
+    if (state_fldchk(exportState, 'Sw_thm')) then
+      call state_getfldptr(exportState, 'Sw_thm', Sw_thm, rc=rc)
+      if (ChkErr(rc,__LINE__,u_FILE_u)) return
+      Sw_thm (:) = 0.
     endif
 
     if (.not. unstr_mesh) then
