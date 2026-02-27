@@ -2,9 +2,13 @@ spack:
   specs:
   - access-ww3 @git.{{ ref }} ~access3
   packages:
+    intel-oneapi-compilers-classic:
+      require:
+      - '@{{ intel_compiler_version }}'
     all:
       require:
-      - '%{{ intel_compiler }} target={{ target }}'
+      - '%access_intel'
+      - target={{ target }}
   concretizer:
     unify: false
   view: false
