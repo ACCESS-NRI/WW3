@@ -1,0 +1,67 @@
+! -------------------------------------------------------------------- !
+! WAVEWATCH III ww3_shel.nml - single-grid standalone run              !
+! -------------------------------------------------------------------- !
+!
+! This setup matches the current standalone preprocessing in run/:
+! - mod_def.ww3 from ww3_grid
+! - restart.ww3 from ww3_strt
+! - wind.ww3 from ww3_prnc
+!
+! It intentionally avoids coupled-only forcing flags from wav_in.
+! Adjust the start/stop dates if you regenerate wind.ww3 for a
+! different period.
+
+! -------------------------------------------------------------------- !
+! Define top-level model parameters via DOMAIN_NML namelist
+! -------------------------------------------------------------------- !
+&DOMAIN_NML
+  DOMAIN%START   = '19790101 000000'
+  DOMAIN%STOP    = '20251231 230000'
+/
+
+! -------------------------------------------------------------------- !
+! Define each forcing via the INPUT_NML namelist
+! -------------------------------------------------------------------- !
+&INPUT_NML
+  INPUT%FORCING%WATER_LEVELS  = 'F'
+  INPUT%FORCING%CURRENTS      = 'F'
+  INPUT%FORCING%WINDS         = 'T'
+  INPUT%FORCING%ICE_CONC      = 'F'
+  INPUT%FORCING%ICE_PARAM1    = 'F'
+  INPUT%FORCING%ICE_PARAM5    = 'F'
+/
+
+! -------------------------------------------------------------------- !
+! Define the output types point parameters via OUTPUT_TYPE_NML namelist
+! -------------------------------------------------------------------- !
+&OUTPUT_TYPE_NML
+  TYPE%FIELD%LIST          = 'WND HS T02 T0M1 T01 FP DIR'
+/
+
+! -------------------------------------------------------------------- !
+! Define output dates via OUTPUT_DATE_NML namelist
+! -------------------------------------------------------------------- !
+&OUTPUT_DATE_NML
+  DATE%FIELD%START         = '19790101 000000'
+  DATE%FIELD%STRIDE        = '86400'
+  DATE%FIELD%STOP          = '20251231 230000'
+
+  DATE%POINT%START         = '19790101 000000'
+  DATE%POINT%STRIDE        = '0'
+  DATE%POINT%STOP          = '20251231 230000'
+
+  DATE%RESTART             = '19790101 000000' '86400' '20251231 230000'
+/
+
+! -------------------------------------------------------------------- !
+! Define homogeneous input via HOMOG_COUNT_NML and HOMOG_INPUT_NML
+! -------------------------------------------------------------------- !
+&HOMOG_COUNT_NML
+/
+
+&HOMOG_INPUT_NML
+/
+
+! -------------------------------------------------------------------- !
+! WAVEWATCH III - end of namelist                                      !
+! -------------------------------------------------------------------- !

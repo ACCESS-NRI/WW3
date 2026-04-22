@@ -15,14 +15,37 @@ project(WW3
 #                                   Options                                     #
 #]==============================================================================]
 
-## List of switches
-# to-do: make configurable 
-list(APPEND switches "CESMCOUPLED" "DIST" "MPI" "PR1" "FLX4" "ST6" "STAB0" "LN1" "NL1" "BT1" "DB1" "MLIM" "TR0" "BS0" "RWND" "WNX1" "WNT0" "CRX1" "CRT0" "O0" "O1" "O2" "O3" "O4" "O5" "O6" "O7" "O14" "O15" "IS0" "REF0" "NOGRB" "IC4")
+## Switch file
+set(SWITCH "switch_ACCESSOM3" CACHE STRING "WW3 switch file path")
+
+if(IS_ABSOLUTE "${SWITCH}")
+  set(WW3_SWITCH_FILE "${SWITCH}")
+elseif(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/model/bin/${SWITCH}")
+  set(WW3_SWITCH_FILE "${CMAKE_CURRENT_SOURCE_DIR}/model/bin/${SWITCH}")
+elseif(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${SWITCH}")
+  set(WW3_SWITCH_FILE "${CMAKE_CURRENT_SOURCE_DIR}/${SWITCH}")
+else()
+  message(FATAL_ERROR
+    "SWITCH '${SWITCH}' was not found. Provide an absolute path or a file under model/bin."
+  )
+endif()
+
+configure_file("${WW3_SWITCH_FILE}" "${CMAKE_CURRENT_BINARY_DIR}/switch" COPYONLY)
+file(READ "${CMAKE_CURRENT_BINARY_DIR}/switch" switch_string)
+string(REPLACE "\n" " " switch_string "${switch_string}")
+string(STRIP "${switch_string}" switch_string)
+separate_arguments(switches UNIX_COMMAND "${switch_string}")
+
+# ACCESS-NRI keeps CESM coupling support enabled in this fork.
+if(NOT "CESMCOUPLED" IN_LIST switches)
+  list(PREPEND switches "CESMCOUPLED")
+endif()
 
 option(WW3_ACCESS3     "Use ACCESS3 dependencies and install ACCESS3 libraries" OFF)
 option(WW3_OPENMP          "Enable OpenMP threading" OFF)
 message(STATUS "  - WW3_ACCESS3   ${WW3_ACCESS3}")
 message(STATUS "  - WW3_OPENMP        ${WW3_OPENMP}")
+message(STATUS "  - WW3 switch file    ${WW3_SWITCH_FILE}")
 
 if(NOT WW3_ACCESS3)
   message(STATUS " - NOT WW3_ACCESS3: Building standalone ww3_shel for testing")
@@ -158,7 +181,7 @@ target_sources(ww3lib PRIVATE ${srcfiles})
 
 ## Utilities
 # Always build utilities:
-set(utility_apps ww3_grid ww3_strt ww3_outf ww3_ounf ww3_ounp)
+set(utility_apps ww3_grid ww3_strt ww3_outf ww3_ounf ww3_ounp ww3_prnc)
 if(NOT WW3_ACCESS3)
   # A generic WW3 "shell" for testing
   list(APPEND utility_apps ww3_shel)
@@ -226,4 +249,3 @@ endif()
 ## Utilities
 install(TARGETS ${utility_apps}
 RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
-
