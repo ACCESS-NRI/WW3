@@ -464,8 +464,11 @@ CONTAINS
       !NB: Eq. 3 only includes T^2 and T^4 terms,
       !  which correspond to ICECOEF3, ICECOEF5, so in
       !  regtest: ICECOEF1=ICECOEF2=ICECOEF4=0
-      MARG1 = ICECOEF1 + ICECOEF2*(SIG/TPI) + ICECOEF3*(SIG/TPI)**2
-      MARG2 = ICECOEF4*(SIG/TPI)**3 + ICECOEF5*(SIG/TPI)**4
+      ! MARG1 = ICECOEF1 + ICECOEF2*(SIG/TPI) + ICECOEF3*(SIG/TPI)**2
+      ! MARG2 = ICECOEF4*(SIG/TPI)**3 + ICECOEF5*(SIG/TPI)**4
+      ! freq = (SIG/TPI)
+      MARG1 = 0.00212*(SIG/TPI)**2
+      MARG2 = 0.0459*(SIG/TPI)**4
       ALPHA = MARG1 + MARG2
       WN_I = 0.5 * ALPHA
 
