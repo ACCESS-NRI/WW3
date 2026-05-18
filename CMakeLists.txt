@@ -15,9 +15,53 @@ project(WW3
 #                                   Options                                     #
 #]==============================================================================]
 
-## List of switches
-# to-do: make configurable 
-list(APPEND switches "CESMCOUPLED" "DIST" "MPI" "PR1" "FLX4" "ST6" "STAB0" "LN1" "NL1" "BT1" "DB1" "MLIM" "TR0" "BS0" "RWND" "WNX1" "WNT0" "CRX1" "CRT0" "O0" "O1" "O2" "O3" "O4" "O5" "O6" "O7" "O14" "O15" "IS0" "REF0" "NOGRB" "IC4")
+## Configuration switches
+
+set(WW3_USER_SWITCHES)
+list(APPEND WW3_SWITCHES "${${WW3_USER_SWITCHES}}")
+
+# Check if a switch has been set for each scheme, otherwise set a default
+# We don't check that WW3_USER_SWITCHES are valid
+foreach(_pair IN ITEMS
+    #prefix; default value
+    "PR;PR1"   # Propogation scheme
+    "FLX;FLX4" # Flux computation
+    "LN;LN1"   # Linear Input
+    "ST;ST6" # input and dissipation
+    "ST;STAB0" # input and dissipation
+    "NL;NL1"   # nonlinear interactions
+    "BT;BT1"   # bottom friction
+    "IC;IC4"   # damping by sea ice
+    "IS;IS0"   # scattering by sea ice
+    "REF;REF0" # reflection
+    "DB;DB1"   # depth-induced breaking
+    "TR;TR0"   # triad interactions
+    "BS;BS0"   # bottom scattering
+    "WNT;WNT0" # wind interpolation (time)
+    "WNX;WNX1" # wind interpolation (space))
+    "CRT;CRT0" # current interpolation (time)
+    "CRX;CRX1" # current interpolation (space)
+)
+  list(GET _pair 0 _prefix)
+  list(GET _pair 1 _default)
+
+  set(_tmp "${WW3_USER_SWITCHES}")
+  list(FILTER _tmp INCLUDE REGEX "^${_prefix}.")
+  if(_tmp STREQUAL "")
+    list(APPEND WW3_SWITCHES "${_default}")
+  endif()
+endforeach()
+
+# Infrastructure switches, unlikely to change
+list(APPEND WW3_SWITCHES "${UserSwitches}" "CESMCOUPLED" "DIST" "MPI" "NOGRB") 
+# output
+list(APPEND WW3_SWITCHES "O0" "O1" "O2" "O3" "O4" "O5" "O6" "O7" "O14" "O15")
+
+# miscellaneous
+list(APPEND WW3_SWITCHES "MLIM" "RWND" )
+
+message(WW3_SWITCHES "${WW3_SWITCHES}")
+
 
 option(WW3_ACCESS3     "Use ACCESS3 dependencies and install ACCESS3 libraries" OFF)
 option(WW3_OPENMP          "Enable OpenMP threading" OFF)
@@ -29,9 +73,8 @@ if(NOT WW3_ACCESS3)
 endif()
 
 if(WW3_OPENMP)
-  list(APPEND switches "OMPG")
+  list(APPEND WW3_SWITCHES "OMPG")
 endif()
-
 
 
 #[==============================================================================[
@@ -73,11 +116,11 @@ else()
 endif()
 
 ## Global compile definitions
-foreach(switch ${switches})
+foreach(switch ${WW3_SWITCHES})
   add_compile_definitions(W3_${switch})
 endforeach()
 
-if ("CESMCOUPLED" IN_LIST switches)
+if ("CESMCOUPLED" IN_LIST WW3_SWITCHES)
   add_compile_definitions(CESMCOUPLED)
 endif()
 
@@ -139,7 +182,7 @@ endif()
 
 # Process switches and get list of extra source files
 include(${CMAKE_CURRENT_SOURCE_DIR}/model/src/cmake/check_switches.cmake)
-check_switches("${switches}" switch_files)
+check_switches("${WW3_SWITCHES}" switch_files)
 message(VERBOSE "WW3 switch files: ${switch_files}")
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/model/src/cmake/src_list.cmake)
