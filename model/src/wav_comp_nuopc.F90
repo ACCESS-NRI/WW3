@@ -84,6 +84,16 @@ module wav_comp_nuopc
   logical                 :: profile_memory = .false.      !< default logical to control use of ESMF
                                                            !! memory profiling
 
+  ! --- ACCESS_WW3_MEMLOG lightweight RSS instrumentation (disabled by default)
+  !     Enable: export ACCESS_WW3_MEMLOG=1
+  !     Filter ranks: export ACCESS_WW3_MEMLOG_RANKS=104,143,207
+  !     Output dir:   export ACCESS_WW3_MEMLOG_DIR=/path/to/dir
+  logical, save  :: ww3ml_enabled   = .false.
+  logical, save  :: ww3ml_init_done = .false.
+  logical, save  :: ww3ml_this_rank = .false.
+  integer, save  :: ww3ml_unit      = -1
+  integer, save  :: ww3ml_step      = 0
+
   logical                 :: root_task = .false.           !< logical to indicate root task
 #ifdef W3_CESMCOUPLED
   logical :: cesmcoupled = .true.                          !< logical to indicate CESM use case
@@ -1124,8 +1134,10 @@ contains
     !------------
     ! Obtain import data from import state
     !------------
+    call ww3ml('import_fields_start')
     call import_fields(gcomp, time0, timen, rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    call ww3ml('import_fields_end')
 
     !------------
     ! Run the wave model for the given interval
@@ -1169,6 +1181,7 @@ contains
     end if
 
     ! Advance the wave model
+    call ww3ml('w3wave_start')
 #ifndef W3_CESMCOUPLED
     if (multigrid) then
       call wmwave ( tend )
@@ -1178,14 +1191,17 @@ contains
 #else
     call w3wave ( 1, odat, timen )
 #endif
+    call ww3ml('w3wave_end')
     if(profile_memory) call ESMF_VMLogMemInfo("Exiting  WW3 Run : ")
 
     !------------
     ! Create export state
     !------------
 
+    call ww3ml('export_fields_start')
     call export_fields(gcomp, rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    call ww3ml('export_fields_end')
 
     if (dbug_flag > 5) call ESMF_LogWrite(trim(subname)//' done', ESMF_LOGMSG_INFO)
     if (root_task) call ufs_logtimer(nu_timer,time,tod,'ModelAdvance time: ',runtimelog,wtime)
@@ -1710,5 +1726,75 @@ contains
     end if
     if (dbug_flag > 5) call ESMF_LogWrite(trim(subname)//' done', ESMF_LOGMSG_INFO)
   end subroutine waveinit_ufs
+
+  !===============================================================================
+  ! ACCESS_WW3_MEMLOG instrumentation — reads /proc/self/status VmRSS each step
+  !===============================================================================
+
+  subroutine ww3ml_read_rss(rss_kb)
+    integer, intent(out) :: rss_kb
+    integer :: unt, ios
+    character(len=256) :: line
+    rss_kb = -1
+    open(newunit=unt, file='/proc/self/status', status='old', action='read', iostat=ios)
+    if (ios /= 0) return
+    do
+      read(unt, '(A)', iostat=ios) line
+      if (ios /= 0) exit
+      if (line(1:6) == 'VmRSS:') then
+        read(line(7:), *, iostat=ios) rss_kb
+        exit
+      end if
+    end do
+    close(unt)
+  end subroutine ww3ml_read_rss
+
+  subroutine ww3ml_init()
+    character(len=512) :: envval, rankenv, logdir, fname
+    integer :: ios, global_rank, ierr, tok_start, tok_end, r
+    ww3ml_init_done = .true.
+    call MPI_Comm_rank(MPI_COMM_WORLD, global_rank, ierr)
+    call get_environment_variable('ACCESS_WW3_MEMLOG', envval, status=ios)
+    if (ios /= 0 .or. trim(envval) /= '1') return
+    ww3ml_enabled = .true.
+    ww3ml_this_rank = .true.
+    call get_environment_variable('ACCESS_WW3_MEMLOG_RANKS', rankenv, status=ios)
+    if (ios == 0 .and. len_trim(rankenv) > 0) then
+      ww3ml_this_rank = .false.
+      rankenv = trim(rankenv) // ','
+      tok_start = 1
+      do tok_end = 1, len_trim(rankenv)
+        if (rankenv(tok_end:tok_end) == ',') then
+          read(rankenv(tok_start:tok_end-1), *, iostat=ios) r
+          if (ios == 0 .and. r == global_rank) ww3ml_this_rank = .true.
+          tok_start = tok_end + 1
+        end if
+      end do
+    end if
+    if (.not. ww3ml_this_rank) return
+    call get_environment_variable('ACCESS_WW3_MEMLOG_DIR', logdir, status=ios)
+    if (ios /= 0 .or. len_trim(logdir) == 0) logdir = '.'
+    write(fname, '(a,a,i6.6,a)') trim(logdir), '/ww3_memlog_rank', global_rank, '.tsv'
+    open(newunit=ww3ml_unit, file=trim(fname), status='replace', action='write', iostat=ios)
+    if (ios /= 0) then
+      ww3ml_enabled = .false.
+      return
+    end if
+    write(ww3ml_unit, '(a)') 'step	global_rank	label	rss_kb'
+    flush(ww3ml_unit)
+  end subroutine ww3ml_init
+
+  subroutine ww3ml(label)
+    character(len=*), intent(in) :: label
+    integer :: rss_kb, global_rank, ierr
+    if (.not. ww3ml_init_done) call ww3ml_init()
+    if (.not. ww3ml_enabled .or. .not. ww3ml_this_rank) return
+    call MPI_Comm_rank(MPI_COMM_WORLD, global_rank, ierr)
+    call ww3ml_read_rss(rss_kb)
+    write(ww3ml_unit, '(i8,a,i6,a,a,a,i12)') &
+          ww3ml_step, char(9), global_rank, char(9), trim(label), char(9), rss_kb
+    flush(ww3ml_unit)
+    ww3ml_step = ww3ml_step + 1
+  end subroutine ww3ml
 
 end module wav_comp_nuopc

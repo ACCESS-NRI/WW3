@@ -326,16 +326,6 @@ module WMESMFMD
   ! --- Memory Profiling
   logical        :: profile_memory = .false.         !< profile_memory
   !
-  ! --- ACCESS_WW3_MEMLOG lightweight RSS instrumentation (disabled by default)
-  !     Enable: export ACCESS_WW3_MEMLOG=1
-  !     Filter ranks: export ACCESS_WW3_MEMLOG_RANKS=104,143,207
-  !     Output dir:   export ACCESS_WW3_MEMLOG_DIR=/path/to/dir
-  logical, save  :: ww3ml_enabled   = .false.
-  logical, save  :: ww3ml_init_done = .false.
-  logical, save  :: ww3ml_this_rank = .false.
-  integer, save  :: ww3ml_unit      = -1
-  integer, save  :: ww3ml_step      = 0
-  !
   ! --- Coupling stuff for non completely overlapped domains
   logical                       :: merge_import = .false.         !< merge_import
   logical, allocatable          :: mmskCreated(:)         !< mmskCreated
@@ -2396,25 +2386,19 @@ contains
     !
     ! 1.e Get import fields
     !
-    call ww3ml('GetImport_start')
     call GetImport(gcomp, rc=rc)
     if (ESMF_LogFoundError(rc, PASSTHRU)) return
-    call ww3ml('GetImport_end')
     !
     ! 1.f Advance model
     !
     if(profile_memory) call ESMF_VMLogMemInfo("Entering WW3 Run : ")
-    call ww3ml('wmwave_start')
     call wmwave ( tend )
-    call ww3ml('wmwave_end')
     if(profile_memory) call ESMF_VMLogMemInfo("Entering WW3 Run : ")
     !
     ! 1.g Set export fields
     !
-    call ww3ml('SetExport_start')
     call SetExport(gcomp, rc=rc)
     if (ESMF_LogFoundError(rc, PASSTHRU)) return
-    call ww3ml('SetExport_end')
     !
     ! -------------------------------------------------------------------- /
     ! Post
@@ -7903,95 +7887,6 @@ contains
     !/ End of ReadFromFile ------------------------------------------- /
     !/
   end subroutine ReadFromFile
-  !/ ------------------------------------------------------------------- /
-  !/
-  !/ ---- ACCESS_WW3_MEMLOG instrumentation routines ------------------- /
-  !/
-
-  !> @brief Read VmRSS from /proc/self/status into rss_kb.
-  subroutine ww3ml_read_rss(rss_kb)
-    integer, intent(out) :: rss_kb
-    integer :: unt, ios
-    character(len=256) :: line
-    rss_kb = -1
-    open(newunit=unt, file='/proc/self/status', status='old', &
-         action='read', iostat=ios)
-    if (ios /= 0) return
-    do
-      read(unt, '(A)', iostat=ios) line
-      if (ios /= 0) exit
-      if (line(1:6) == 'VmRSS:') then
-        read(line(7:), *, iostat=ios) rss_kb
-        exit
-      end if
-    end do
-    close(unt)
-  end subroutine ww3ml_read_rss
-
-  !> @brief Initialise memory logging on first call.
-  !>  Reads ACCESS_WW3_MEMLOG, ACCESS_WW3_MEMLOG_RANKS,
-  !>  ACCESS_WW3_MEMLOG_DIR.  Rank filtering uses improc-1 (0-based global).
-  subroutine ww3ml_init()
-    character(len=512) :: envval, rankenv, logdir, fname
-    integer :: ios, global_rank, tok_start, tok_end, r
-
-    ww3ml_init_done = .true.
-    global_rank = improc - 1          ! 0-based global MPI / ESMF localPet
-
-    ! Check master enable switch
-    call get_environment_variable('ACCESS_WW3_MEMLOG', envval, status=ios)
-    if (ios /= 0 .or. trim(envval) /= '1') return
-    ww3ml_enabled = .true.
-
-    ! Rank filter (default: all WAV ranks log)
-    ww3ml_this_rank = .true.
-    call get_environment_variable('ACCESS_WW3_MEMLOG_RANKS', rankenv, status=ios)
-    if (ios == 0 .and. len_trim(rankenv) > 0) then
-      ww3ml_this_rank = .false.
-      ! Parse comma-separated integer list
-      rankenv = trim(rankenv) // ','
-      tok_start = 1
-      do tok_end = 1, len_trim(rankenv)
-        if (rankenv(tok_end:tok_end) == ',') then
-          read(rankenv(tok_start:tok_end-1), *, iostat=ios) r
-          if (ios == 0 .and. r == global_rank) ww3ml_this_rank = .true.
-          tok_start = tok_end + 1
-        end if
-      end do
-    end if
-
-    if (.not. ww3ml_this_rank) return
-
-    ! Output directory
-    call get_environment_variable('ACCESS_WW3_MEMLOG_DIR', logdir, status=ios)
-    if (ios /= 0 .or. len_trim(logdir) == 0) logdir = '.'
-
-    ! Per-rank TSV file
-    write(fname, '(a,a,i6.6,a)') trim(logdir), '/ww3_memlog_rank', &
-          global_rank, '.tsv'
-    open(newunit=ww3ml_unit, file=trim(fname), status='replace', &
-         action='write', iostat=ios)
-    if (ios /= 0) then
-      ww3ml_enabled = .false.
-      return
-    end if
-    write(ww3ml_unit, '(a)') 'step	global_rank	label	rss_kb'
-    flush(ww3ml_unit)
-  end subroutine ww3ml_init
-
-  !> @brief Log current RSS.  No-op unless ACCESS_WW3_MEMLOG=1.
-  subroutine ww3ml(label)
-    character(len=*), intent(in) :: label
-    integer :: rss_kb
-    if (.not. ww3ml_init_done) call ww3ml_init()
-    if (.not. ww3ml_enabled .or. .not. ww3ml_this_rank) return
-    call ww3ml_read_rss(rss_kb)
-    write(ww3ml_unit, '(i8,a,i6,a,a,a,i12)') &
-          ww3ml_step, char(9), improc-1, char(9), trim(label), char(9), rss_kb
-    flush(ww3ml_unit)
-    ww3ml_step = ww3ml_step + 1
-  end subroutine ww3ml
-
   !/ ------------------------------------------------------------------- /
   !/
   !/ End of module WMESMFMD -------------------------------------------- /
