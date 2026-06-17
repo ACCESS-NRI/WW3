@@ -361,10 +361,13 @@ CONTAINS
 
     REAL                    :: KI1,KI2,KI3,KI4,FC5,FC6,FC7,FREQ
     REAL                    :: HS, EMEAN, HICE
-    REAL, ALLOCATABLE       :: WN_I(:)  ! exponential decay rate for amplitude
-    REAL, ALLOCATABLE       :: ALPHA(:) ! exponential decay rate for energy
-    REAL, ALLOCATABLE       :: MARG1(:), MARG2(:) ! Arguments for M2
-    REAL, ALLOCATABLE       :: KARG1(:), KARG2(:), KARG3(:) !Arguments for M3
+    ! Automatic (stack) arrays — NK is a module variable from W3GDATMD,
+    ! available in this scope. Using automatic arrays avoids per-call heap
+    ! allocation/free cycles that fragment glibc's arena and grow RSS.
+    REAL                    :: WN_I(0:NK+1)  ! exponential decay rate for amplitude
+    REAL                    :: ALPHA(0:NK+1) ! exponential decay rate for energy
+    REAL                    :: MARG1(0:NK+1), MARG2(0:NK+1) ! Arguments for M2
+    REAL                    :: KARG1(0:NK+1), KARG2(0:NK+1), KARG3(0:NK+1) !Arguments for M3
 
     !/
     !/ ------------------------------------------------------------------- /
@@ -377,13 +380,6 @@ CONTAINS
     !
     D        = 0.0
     !
-    ALLOCATE(WN_I(0:NK+1))
-    ALLOCATE(ALPHA(0:NK+1))
-    ALLOCATE(MARG1(0:NK+1))
-    ALLOCATE(MARG2(0:NK+1))
-    ALLOCATE(KARG1(0:NK+1))
-    ALLOCATE(KARG2(0:NK+1))
-    ALLOCATE(KARG3(0:NK+1))
     MARG1    = 0.0
     MARG2    = 0.0
     KARG1    = 0.0
