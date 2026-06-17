@@ -197,6 +197,15 @@ MODULE W3WAVEMD
   !
   PUBLIC
   !/
+  ! --- ACCESS_WW3_MEMLOG sub-phase memory instrumentation (disabled by default)
+  !     Enabled when ACCESS_WW3_MEMLOG=1 (same env vars as wav_comp_nuopc)
+  !     Output: ww3_memlog_subphase_rankNNNNNN.tsv per selected rank
+  !     Columns: coupling_step, global_rank, itime, phase, rss_kb, vmdata_kb
+  logical, save, private :: ww3sp_enabled   = .false.
+  logical, save, private :: ww3sp_init_done = .false.
+  logical, save, private :: ww3sp_this_rank = .false.
+  integer, save, private :: ww3sp_unit      = -1
+  integer, save, private :: ww3sp_cstep     = 0
 CONTAINS
   !/ ------------------------------------------------------------------- /
   !>
@@ -641,6 +650,8 @@ CONTAINS
 #endif
 
     !
+    ww3sp_cstep = ww3sp_cstep + 1
+    call ww3sp(0, 'W3WAVE_ENTRY')
     ALLOCATE(TAUWX(NSEAL), TAUWY(NSEAL))
 #ifdef W3_REFRX
     ALLOCATE(CIK(NSEAL))
@@ -1071,6 +1082,7 @@ CONTAINS
         call print_memcheck(memunit, 'memcheck_____:'//' WW3_WAVE TIME LOOP 0')
         !
         ITIME  = ITIME + 1
+        call ww3sp(ITIME, 'IT_START')
         !
         DTG    = REAL(NINT(DTGA+DTRES+0.0001))
         DTRES  = DTRES + DTGA - DTG
@@ -1111,6 +1123,7 @@ CONTAINS
         WRITE(740+IAPROC,*) 'Debug DCXDX FLCUR=', FLCUR
 #endif
         call print_memcheck(memunit, 'memcheck_____:'//' WW3_WAVE TIME LOOP 3a')
+        call ww3sp(ITIME, 'FIELD_UPDATE_START')
 
         IF ( FLCUR  ) THEN
 #ifdef W3_DEBUGCOH
@@ -1441,6 +1454,7 @@ CONTAINS
         !
         FLIWND = .FALSE.
         FLFRST = .FALSE.
+        call ww3sp(ITIME, 'FIELD_UPDATE_END')
         !
 #ifdef W3_PDLIB
 #ifdef W3_DEBUGSRC
@@ -1656,6 +1670,7 @@ CONTAINS
           END IF
         END IF
         call print_memcheck(memunit, 'memcheck_____:'//' WW3_WAVE TIME LOOP 15')
+        call ww3sp(ITIME, 'PROP_SETUP_START')
         !
 
         !
@@ -1716,6 +1731,7 @@ CONTAINS
 #ifdef W3_TIMINGS
           CALL PRINT_MY_TIME("Before intraspectral")
 #endif
+          call ww3sp(ITIME, 'INTRASPECTRAL_PROP_1_START')
           IF ( FLCTH .OR. FLCK ) THEN
             DO ITLOC=1, ITLOCH
               !
@@ -1802,7 +1818,9 @@ CONTAINS
             END DO
           END IF
 
+          call ww3sp(ITIME, 'INTRASPECTRAL_PROP_1_END')
           call print_memcheck(memunit, 'memcheck_____:'//' WW3_WAVE TIME LOOP 16')
+          call ww3sp(ITIME, 'SPATIAL_PROP_START')
 
 #ifdef W3_DEBUGCOH
           CALL ALL_VA_INTEGRAL_PRINT(IMOD, "Before spatial advection", 1)
@@ -2030,6 +2048,7 @@ CONTAINS
             END IF
             !
           END IF
+          call ww3sp(ITIME, 'SPATIAL_PROP_END')
 
 #ifdef W3_DEBUGCOH
           CALL ALL_VA_INTEGRAL_PRINT(IMOD, "After spatial advection", 1)
@@ -2040,6 +2059,7 @@ CONTAINS
           !
           ! 3.6.4 Intra-spectral part 2
           !
+          call ww3sp(ITIME, 'INTRASPECTRAL_PROP_2_START')
           IF ( FLCTH .OR. FLCK ) THEN
             DO ITLOC=ITLOCH+1, NTLOC
               !
@@ -2124,6 +2144,7 @@ CONTAINS
               !
             END DO
           END IF
+          call ww3sp(ITIME, 'INTRASPECTRAL_PROP_2_END')
 #ifdef W3_DEBUGCOH
           CALL ALL_VA_INTEGRAL_PRINT(IMOD, "After intraspectral adv.", 1)
 #endif
@@ -2139,6 +2160,7 @@ CONTAINS
           ! 3.7 Calculate and integrate source terms.
           !
 370       CONTINUE
+          call ww3sp(ITIME, 'SOURCE_TERMS_START')
           IF ( FLSOU ) THEN
             !
             D50=0.0002
@@ -2167,6 +2189,7 @@ CONTAINS
 #endif
 
             !
+            call ww3sp(ITIME, 'SRCE_LOOP_START')
             DO JSEA=1, NSEAL
               CALL INIT_GET_ISEA(ISEA, JSEA)
               IX     = MAPSF(ISEA,1)
@@ -2271,6 +2294,7 @@ CONTAINS
                 !                    VA(:,JSEA)  = 0.
               END IF
             END DO
+            call ww3sp(ITIME, 'SRCE_LOOP_END')
 
             !
 #ifdef W3_OMPG
@@ -2291,6 +2315,7 @@ CONTAINS
 #endif
 #endif
           END IF
+          call ww3sp(ITIME, 'SOURCE_TERMS_END')
 #ifdef W3_DEBUGCOH
           CALL ALL_VA_INTEGRAL_PRINT(IMOD, "After source terms", 1)
 #endif
@@ -2340,6 +2365,7 @@ CONTAINS
         CALL PRINT_MY_TIME("end of time loop")
 #endif
         !
+        call ww3sp(ITIME, 'IT_END')
         !
       END DO
 
@@ -2356,6 +2382,7 @@ CONTAINS
       ! ==================================================================== /
       !
 400   CONTINUE
+      call ww3sp(ITIME, 'OUTPUT_START')
       !
       ! 4.  Perform output to file if requested ---------------------------- /
       ! 4.a Check if time is output time
@@ -2826,6 +2853,7 @@ CONTAINS
       IDACT  = '         '
       OUTID  = '           '
       FLACT  = .FALSE.
+      call ww3sp(ITIME, 'OUTPUT_END')
       !
       ! 6.  If time is not ending time, branch back to 2 ------------------- /
       !
@@ -2847,6 +2875,7 @@ CONTAINS
     !
     DEALLOCATE(FIELD)
     DEALLOCATE(TAUWX, TAUWY)
+    call ww3sp(ITIME, 'W3WAVE_EXIT')
     !
     call print_memcheck(memunit, 'memcheck_____:'//' WW3_WAVE END W3WAVE')
     !
@@ -3735,4 +3764,92 @@ CONTAINS
   !/
   !/ End of module W3WAVEMD -------------------------------------------- /
   !/
+
+  ! ===================================================================== /
+  ! ACCESS_WW3_MEMLOG sub-phase instrumentation — VmRSS + VmData per step
+  ! ===================================================================== /
+
+  subroutine ww3sp_read_mem(rss_kb, data_kb)
+    integer, intent(out) :: rss_kb, data_kb
+    integer :: unt, ios
+    character(len=256) :: line
+    logical :: got_rss, got_data
+    rss_kb   = -1
+    data_kb  = -1
+    got_rss  = .false.
+    got_data = .false.
+    open(newunit=unt, file='/proc/self/status', status='old', &
+         action='read', iostat=ios)
+    if (ios /= 0) return
+    do
+      read(unt, '(A)', iostat=ios) line
+      if (ios /= 0) exit
+      if (.not. got_rss .and. line(1:6) == 'VmRSS:') then
+        read(line(7:), *, iostat=ios) rss_kb
+        got_rss = .true.
+      end if
+      if (.not. got_data .and. line(1:7) == 'VmData:') then
+        read(line(8:), *, iostat=ios) data_kb
+        got_data = .true.
+      end if
+      if (got_rss .and. got_data) exit
+    end do
+    close(unt)
+  end subroutine ww3sp_read_mem
+
+  subroutine ww3sp_init()
+    include "mpif.h"
+    character(len=512) :: envval, rankenv, logdir, fname
+    integer :: ios, global_rank, ierr, tok_start, tok_end, r
+    ww3sp_init_done = .true.
+    call MPI_Comm_rank(MPI_COMM_WORLD, global_rank, ierr)
+    call get_environment_variable('ACCESS_WW3_MEMLOG', envval, status=ios)
+    if (ios /= 0 .or. trim(envval) /= '1') return
+    ww3sp_enabled   = .true.
+    ww3sp_this_rank = .true.
+    call get_environment_variable('ACCESS_WW3_MEMLOG_RANKS', rankenv, status=ios)
+    if (ios == 0 .and. len_trim(rankenv) > 0) then
+      ww3sp_this_rank = .false.
+      rankenv = trim(rankenv) // ','
+      tok_start = 1
+      do tok_end = 1, len_trim(rankenv)
+        if (rankenv(tok_end:tok_end) == ',') then
+          read(rankenv(tok_start:tok_end-1), *, iostat=ios) r
+          if (ios == 0 .and. r == global_rank) ww3sp_this_rank = .true.
+          tok_start = tok_end + 1
+        end if
+      end do
+    end if
+    if (.not. ww3sp_this_rank) return
+    call get_environment_variable('ACCESS_WW3_MEMLOG_DIR', logdir, status=ios)
+    if (ios /= 0 .or. len_trim(logdir) == 0) logdir = '.'
+    write(fname, '(a,a,i6.6,a)') trim(logdir), &
+      '/ww3_memlog_subphase_rank', global_rank, '.tsv'
+    open(newunit=ww3sp_unit, file=trim(fname), status='replace', &
+         action='write', iostat=ios)
+    if (ios /= 0) then
+      ww3sp_enabled = .false.
+      return
+    end if
+    write(ww3sp_unit, '(a)') &
+      'coupling_step'//char(9)//'global_rank'//char(9)//'itime'//char(9)// &
+      'phase'//char(9)//'rss_kb'//char(9)//'vmdata_kb'
+    flush(ww3sp_unit)
+  end subroutine ww3sp_init
+
+  subroutine ww3sp(itime_in, phase)
+    include "mpif.h"
+    integer, intent(in)          :: itime_in
+    character(len=*), intent(in) :: phase
+    integer :: rss_kb, data_kb, global_rank, ierr
+    if (.not. ww3sp_init_done) call ww3sp_init()
+    if (.not. ww3sp_enabled .or. .not. ww3sp_this_rank) return
+    call MPI_Comm_rank(MPI_COMM_WORLD, global_rank, ierr)
+    call ww3sp_read_mem(rss_kb, data_kb)
+    write(ww3sp_unit, '(i8,a,i6,a,i8,a,a,a,i12,a,i12)') &
+      ww3sp_cstep, char(9), global_rank, char(9), itime_in, char(9), &
+      trim(phase), char(9), rss_kb, char(9), data_kb
+    flush(ww3sp_unit)
+  end subroutine ww3sp
+
 END MODULE W3WAVEMD
