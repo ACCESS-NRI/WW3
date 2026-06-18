@@ -880,7 +880,6 @@ CONTAINS
     !
     ! 1.e Ice floe interval
     !
-#ifdef W3_IS2
     IF ( FLIC5 ) THEN
       IF ( TIC5(1) .GE. 0 ) THEN
         DTI50   = DSEC21 ( TIC5 , TI5 )
@@ -897,7 +896,6 @@ CONTAINS
     ELSE
       DTI50   = 0.
     END IF
-#endif
     !
     ! 2.  Determine next time from ending and output --------------------- /
     !     time and get corresponding time step.
@@ -1314,7 +1312,6 @@ CONTAINS
         !
         ! 3.3.3 Update ice floe diameter
         !
-#ifdef W3_IS2
         IF ( FLIC5 .AND. DTI50.NE.0. ) THEN
           !
           IF ( TIC5(1).GE.0 ) THEN
@@ -1336,7 +1333,6 @@ CONTAINS
           END IF
           !
         END IF
-#endif
         call print_memcheck(memunit, 'memcheck_____:'//' WW3_WAVE TIME LOOP 11a')
         !
         ! 3.4 Transform grid (if new water level).
@@ -2881,10 +2877,8 @@ CONTAINS
          '     NEW ATM MOMENTUM BEFORE OLD ATM MOMENTUM '/)
 1008 FORMAT (/' *** WAVEWATCH III ERROR IN W3WAVE :'/                    &
          '     NEW AIR DENSITY BEFORE OLD AIR DENSITY '/)
-#ifdef W3_IS2
 1006 FORMAT (/' *** WAVEWATCH III ERROR IN W3WAVE :'/                    &
          '     NEW IC5 FIELD BEFORE OLD IC5 FIELD '/)
-#endif
 1030 FORMAT (/' *** WAVEWATCH III WARING IN W3WAVE :'/                   &
          '     AT LEAST ONE PROCESSOR HAS 0 ACTIVE POINTS',              &
          ' IN GRID',I3)
