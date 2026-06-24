@@ -2294,6 +2294,7 @@ CONTAINS
                 !                    VA(:,JSEA)  = 0.
               END IF
             END DO
+            call ww3st_flush(ITIME)
             call ww3sp(ITIME, 'SRCE_LOOP_END')
 
             !

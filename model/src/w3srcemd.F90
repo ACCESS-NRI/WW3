@@ -67,6 +67,17 @@ MODULE W3SRCEMD
   !/ ------------------------------------------------------------------- /
   !/
   REAL, PARAMETER, PRIVATE:: OFFSET = 1.
+  !
+  ! D7: per-source-term RSS+VmData accumulator - disabled by default
+  ! Enable: ACCESS_WW3_MEMLOG=1, ACCESS_WW3_MEMLOG_RANKS, ACCESS_WW3_MEMLOG_DIR
+  logical,  save, private :: ww3st_enabled   = .false.
+  logical,  save, private :: ww3st_init_done = .false.
+  logical,  save, private :: ww3st_this_rank = .false.
+  integer,  save, private :: ww3st_unit      = -1
+  integer(kind=8), save, private :: ww3st_acc_rss(7) = 0_8
+  integer(kind=8), save, private :: ww3st_acc_dat(7) = 0_8
+  integer,  save, private :: ww3st_rss_prev  = 0
+  integer,  save, private :: ww3st_dat_prev  = 0
   !/
 CONTAINS
   !/ ------------------------------------------------------------------- /
@@ -840,6 +851,7 @@ CONTAINS
     IF (NINT(IGPARS(12)).EQ.0) IKS1 = NINT(IGPARS(5))
 #endif
     IS1=(IKS1-1)*NTH+1
+    call ww3st_probe(0)
 
     !! Initialise source term arrays:
     VD   = 0.
@@ -1117,6 +1129,7 @@ CONTAINS
     CALL W3FLX5 ( ZWND, U10ABS, U10DIR, TAUA, TAUADIR, DAIR,  &
          USTAR, USTDIR, Z0, CD, CHARN )
 #endif
+    call ww3st_probe(1)
     !
     ! 1.e Prepare cut-off beyond which the tail is imposed with a power law
     !
@@ -1212,6 +1225,7 @@ CONTAINS
       CALL W3SIN6 ( SPEC, CG1, WN2, U10ABS, USTAR, USTDIR, CD, DAIR, &
            TAUWX, TAUWY, TAUWAX, TAUWAY, VSIN, VDIN )
 #endif
+      call ww3st_probe(2)
       !
       ! 2.b Nonlinear interactions.
       !
@@ -1241,6 +1255,7 @@ CONTAINS
 #ifdef W3_PDLIB
       ENDIF
 #endif
+      call ww3st_probe(3)
       !
       ! 2.c Dissipation... except for ST4
       ! 2.c1   as in source term package
@@ -1288,6 +1303,7 @@ CONTAINS
         CALL W3SWL6 ( SPEC, CG1, WN1, VSWL, VDWL )
       END IF
 #endif
+      call ww3st_probe(4)
       !
       ! 2.d Bottom interactions.
       !
@@ -1317,6 +1333,7 @@ CONTAINS
       CALL UOST_SRCTRMCOMPUTE(IX, IY, SPEC, CG1, DT,            &
            U10ABS, U10DIR, VSUO, VDUO)
 #endif
+      call ww3st_probe(5)
       ! Sea Ice Source Terms if IC_NUMERICS namelist flag = True
       IF (IC_NUMERICS) THEN
 #ifdef W3_IC1
@@ -1344,6 +1361,7 @@ CONTAINS
         IF (ICE .GT. 0) CALL W3SIS1 ( SPEC, ICE, VSIR )
 #endif
       ENDIF
+      call ww3st_probe(6)
       !
       ! 2.g Dump training data if necessary
       !
@@ -1956,6 +1974,7 @@ CONTAINS
            VSIN, VDIN, LLWS, IX, IY, BRLAMBDA )
 #endif
 
+      call ww3st_probe(7)
       !
       ! 7.  Check if integration complete ---------------------------------- *
       !
@@ -2685,6 +2704,121 @@ CONTAINS
     END DO
   END SUBROUTINE SIGN_VSD_PATANKAR_WW3
   !/
+  !/ D7 memory-probe subroutines --------------------------------------- /
+  !/
+
+  subroutine ww3st_read_mem(rss_kb, data_kb)
+    integer, intent(out) :: rss_kb, data_kb
+    integer :: unt, ios
+    character(len=256) :: line
+    logical :: got_rss, got_data
+    rss_kb   = -1
+    data_kb  = -1
+    got_rss  = .false.
+    got_data = .false.
+    open(newunit=unt, file='/proc/self/status', status='old', &
+         action='read', iostat=ios)
+    if (ios /= 0) return
+    do
+      read(unt, '(A)', iostat=ios) line
+      if (ios /= 0) exit
+      if (.not. got_rss .and. line(1:6) == 'VmRSS:') then
+        read(line(7:), *, iostat=ios) rss_kb
+        got_rss = .true.
+      end if
+      if (.not. got_data .and. line(1:7) == 'VmData:') then
+        read(line(8:), *, iostat=ios) data_kb
+        got_data = .true.
+      end if
+      if (got_rss .and. got_data) exit
+    end do
+    close(unt)
+  end subroutine ww3st_read_mem
+
+  subroutine ww3st_init()
+    include "mpif.h"
+    character(len=512) :: envval, rankenv, logdir, fname
+    integer :: ios, global_rank, ierr, tok_start, tok_end, r
+    ww3st_init_done = .true.
+    call MPI_Comm_rank(MPI_COMM_WORLD, global_rank, ierr)
+    call get_environment_variable('ACCESS_WW3_MEMLOG', envval, status=ios)
+    if (ios /= 0 .or. trim(envval) /= '1') return
+    ww3st_enabled   = .true.
+    ww3st_this_rank = .true.
+    call get_environment_variable('ACCESS_WW3_MEMLOG_RANKS', rankenv, status=ios)
+    if (ios == 0 .and. len_trim(rankenv) > 0) then
+      ww3st_this_rank = .false.
+      rankenv = trim(rankenv) // ','
+      tok_start = 1
+      do tok_end = 1, len_trim(rankenv)
+        if (rankenv(tok_end:tok_end) == ',') then
+          read(rankenv(tok_start:tok_end-1), *, iostat=ios) r
+          if (ios == 0 .and. r == global_rank) ww3st_this_rank = .true.
+          tok_start = tok_end + 1
+        end if
+      end do
+    end if
+    if (.not. ww3st_this_rank) return
+    call get_environment_variable('ACCESS_WW3_MEMLOG_DIR', logdir, status=ios)
+    if (ios /= 0 .or. len_trim(logdir) == 0) logdir = '.'
+    write(fname, '(a,a,i6.6,a)') trim(logdir), &
+      '/ww3_memlog_srce_rank', global_rank, '.tsv'
+    open(newunit=ww3st_unit, file=trim(fname), status='replace', &
+         action='write', iostat=ios)
+    if (ios /= 0) then
+      ww3st_enabled = .false.
+      return
+    end if
+    write(ww3st_unit, '(a)') &
+      'itime'//char(9)//'global_rank'//char(9)//'segment'//char(9)// &
+      'rss_kb'//char(9)//'vmdata_kb'
+    flush(ww3st_unit)
+  end subroutine ww3st_init
+
+  ! seg=0: save baseline (no accumulation); seg=1-7: acc(seg) += delta vs prev
+  subroutine ww3st_probe(seg)
+    integer, intent(in) :: seg
+    integer :: rss, dat
+    if (.not. ww3st_init_done) call ww3st_init()
+    if (.not. ww3st_enabled .or. .not. ww3st_this_rank) return
+    call ww3st_read_mem(rss, dat)
+    if (seg == 0) then
+      ww3st_rss_prev = rss
+      ww3st_dat_prev = dat
+    else
+      ww3st_acc_rss(seg) = ww3st_acc_rss(seg) + int(rss - ww3st_rss_prev, kind=8)
+      ww3st_acc_dat(seg) = ww3st_acc_dat(seg) + int(dat - ww3st_dat_prev, kind=8)
+      ww3st_rss_prev = rss
+      ww3st_dat_prev = dat
+    end if
+  end subroutine ww3st_probe
+
+  ! Called from w3wavemd.F90 after SRCE_LOOP: writes 7 rows and resets accumulators
+  subroutine ww3st_flush(itime)
+    include "mpif.h"
+    integer, intent(in) :: itime
+    integer :: global_rank, ierr, i
+    character(len=20), parameter :: SEGNAMES(7) = (/ &
+      'SPEC_PARAMS         ', &
+      'WIND_INPUT          ', &
+      'NONLINEAR           ', &
+      'DISSIPATION         ', &
+      'BOTTOM              ', &
+      'ICE                 ', &
+      'INTEGRATION         ' /)
+    if (.not. ww3st_init_done) call ww3st_init()
+    if (.not. ww3st_enabled .or. .not. ww3st_this_rank) return
+    call MPI_Comm_rank(MPI_COMM_WORLD, global_rank, ierr)
+    do i = 1, 7
+      write(ww3st_unit, '(i8,a,i6,a,a,a,i14,a,i14)') &
+        itime, char(9), global_rank, char(9), trim(SEGNAMES(i)), char(9), &
+        ww3st_acc_rss(i), char(9), ww3st_acc_dat(i)
+    end do
+    flush(ww3st_unit)
+    ww3st_acc_rss = 0_8
+    ww3st_acc_dat = 0_8
+  end subroutine ww3st_flush
+
   !/ End of module W3SRCEMD -------------------------------------------- /
   !/
 END MODULE W3SRCEMD
