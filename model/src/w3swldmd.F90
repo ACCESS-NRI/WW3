@@ -351,8 +351,9 @@ CONTAINS
 #endif
     !
     !/ 0) --- Initialize parameters -------------------------------------- /
-    IKN   = IRANGE(1,NSPEC,NTH)            ! Index vector for array access, e.g.
-    !                                            ! in form of WN(1:NK) == WN2(IKN).
+    DO IK = 1, NK
+      IKN(IK) = 1 + (IK-1)*NTH
+    END DO
     ABAND = SUM(RESHAPE(A,(/ NTH,NK /)),1) ! action density as function of wavenumber
     DDIS  = 0.
     D     = 0.
