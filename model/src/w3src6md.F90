@@ -435,8 +435,9 @@ CONTAINS
     ECOS2  = ECOS(1:NSPEC)         ! Only indices from 1 to NSPEC
     ESIN2  = ESIN(1:NSPEC)         ! are requested.
     !
-    IKN    = IRANGE(1,NSPEC,NTH)   ! Index vector for elements of 1 ... NK
-    !                                    ! such that e.g. SIG(1:NK) = SIG2(IKN).
+    DO IK = 1, NK
+      IKN(IK) = 1 + (IK-1)*NTH
+    END DO
     DSII2  = DDEN2 / DTH / SIG2    ! Frequency bandwidths (int.)  (rad)
     DSII   = DSII2(IKN)
     SIG    = SIG2(IKN)
@@ -673,9 +674,9 @@ CONTAINS
 #endif
     !
     !/ 0) --- Initialize essential parameters ---------------------------- /
-    IKN     = IRANGE(1,NSPEC,NTH)    ! Index vector for elements of 1,
-    !                                      ! 2,..., NK such that for example
-    !                                      ! SIG(1:NK) = SIG2(IKN).
+    DO IK = 1, NK
+      IKN(IK) = 1 + (IK-1)*NTH
+    END DO
     FREQ    = SIG2(IKN)/TPI
     ANAR    = 1.0
     BNT     = 0.035**2
@@ -899,7 +900,9 @@ CONTAINS
     NK10Hz = MAX(NK,NK10Hz)
     !
     ALLOCATE(IK10Hz(NK10Hz))
-    IK10Hz = REAL( IRANGE(1,NK10Hz,1) )
+    DO IK = 1, NK10Hz
+      IK10Hz(IK) = REAL(IK)
+    END DO
     !
     ALLOCATE(SIG10Hz(NK10Hz))
     ALLOCATE(CINV10Hz(NK10Hz))
@@ -1134,7 +1137,7 @@ CONTAINS
     INTEGER, SAVE     :: IENT = 0
 #endif
     REAL, PARAMETER   :: FRQMAX  = 10.  ! Upper freq. limit to extrapolate to.
-    INTEGER           :: NK10Hz
+    INTEGER           :: NK10Hz, I
     !
     REAL              :: ECOS2(NSPEC), ESIN2(NSPEC)
     REAL, ALLOCATABLE :: IK10Hz(:), SIG10Hz(:), CINV10Hz(:)
@@ -1152,7 +1155,9 @@ CONTAINS
     NK10Hz = MAX(NK,NK10Hz)
     !
     ALLOCATE(IK10Hz(NK10Hz))
-    IK10Hz = REAL( IRANGE(1,NK10Hz,1) )
+    DO I = 1, NK10Hz
+      IK10Hz(I) = REAL(I)
+    END DO
     !
     ALLOCATE(SIG10Hz(NK10Hz))
     ALLOCATE(CINV10Hz(NK10Hz))
@@ -1193,6 +1198,14 @@ CONTAINS
     !     --- The wave supported stress (waves to atmosphere) ------------ /
     TAUNWX = TAUWINDS(SDENSX10Hz,CINV10Hz,DSII10Hz)   ! x-component
     TAUNWY = TAUWINDS(SDENSY10Hz,CINV10Hz,DSII10Hz)   ! y-component
+    !
+    IF (ALLOCATED(IK10Hz))     DEALLOCATE(IK10Hz)
+    IF (ALLOCATED(SIG10Hz))    DEALLOCATE(SIG10Hz)
+    IF (ALLOCATED(CINV10Hz))   DEALLOCATE(CINV10Hz)
+    IF (ALLOCATED(DSII10Hz))   DEALLOCATE(DSII10Hz)
+    IF (ALLOCATED(SDENSX10Hz)) DEALLOCATE(SDENSX10Hz)
+    IF (ALLOCATED(SDENSY10Hz)) DEALLOCATE(SDENSY10Hz)
+    IF (ALLOCATED(UCINV10Hz))  DEALLOCATE(UCINV10Hz)
     !/
   END SUBROUTINE TAU_WAVE_ATMOS
   !/ ------------------------------------------------------------------- /
