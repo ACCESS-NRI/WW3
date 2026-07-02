@@ -1198,6 +1198,14 @@ CONTAINS
     !     --- The wave supported stress (waves to atmosphere) ------------ /
     TAUNWX = TAUWINDS(SDENSX10Hz,CINV10Hz,DSII10Hz)   ! x-component
     TAUNWY = TAUWINDS(SDENSY10Hz,CINV10Hz,DSII10Hz)   ! y-component
+    !
+    IF (ALLOCATED(IK10Hz))     DEALLOCATE(IK10Hz)
+    IF (ALLOCATED(SIG10Hz))    DEALLOCATE(SIG10Hz)
+    IF (ALLOCATED(CINV10Hz))   DEALLOCATE(CINV10Hz)
+    IF (ALLOCATED(DSII10Hz))   DEALLOCATE(DSII10Hz)
+    IF (ALLOCATED(SDENSX10Hz)) DEALLOCATE(SDENSX10Hz)
+    IF (ALLOCATED(SDENSY10Hz)) DEALLOCATE(SDENSY10Hz)
+    IF (ALLOCATED(UCINV10Hz))  DEALLOCATE(UCINV10Hz)
     !/
   END SUBROUTINE TAU_WAVE_ATMOS
   !/ ------------------------------------------------------------------- /
