@@ -73,7 +73,6 @@ MODULE W3SRC6MD
   !      W3SIN6    Subr. Public   Observation-based wind input.
   !      W3SDS6    Subr. Public   Observation-based dissipation.
   !
-  !      IRANGE    Func. Private  Generate a sequence of integer values.
   !      LFACTOR   Func. Private  Calculate reduction factor for Sin.
   !      TAUWINDS  Func. Private  Normal stress calculation for Sin.
   !     ----------------------------------------------------------------
@@ -97,7 +96,7 @@ MODULE W3SRC6MD
   !/ ------------------------------------------------------------------- /
   !/
   PUBLIC  ::  W3SPR6, W3SIN6, W3SDS6
-  PRIVATE ::  LFACTOR, TAUWINDS, IRANGE
+  PRIVATE ::  LFACTOR, TAUWINDS
 CONTAINS
   !/ ------------------------------------------------------------------- /
 
@@ -343,7 +342,6 @@ CONTAINS
     !      Name      Type  Module   Description
     !     ----------------------------------------------------------------
     !      LFACTOR   Subr. W3SRC6MD
-    !      IRANGE    Func. W3SRC6MD
     !      STRACE    Subr. W3SERVMD Subroutine tracing.
     !     ----------------------------------------------------------------
     !
@@ -834,7 +832,6 @@ CONTAINS
     !      Name      Type  Scope    Description
     !     ----------------------------------------------------------------
     !      STRACE    Subr. W3SERVMD Subroutine tracing.
-    !      IRANGE    Func. Private  Index generator (ie, array addressing)
     !      TAUWINDS  Func. Private  Normal stress calculation (TAU_NRM)
     !     ----------------------------------------------------------------
     !
@@ -1111,7 +1108,6 @@ CONTAINS
     !      Name      Type  Scope    Description
     !     ----------------------------------------------------------------
     !      STRACE    Subr. W3SERVMD Subroutine tracing.
-    !      IRANGE    Func. Private  Index generator (ie, array addressing)
     !      TAUWINDS  Func. Private  Normal stress calculation (TAU_NRM)
     !     ----------------------------------------------------------------
     !
@@ -1208,52 +1204,6 @@ CONTAINS
     IF (ALLOCATED(UCINV10Hz))  DEALLOCATE(UCINV10Hz)
     !/
   END SUBROUTINE TAU_WAVE_ATMOS
-  !/ ------------------------------------------------------------------- /
-  !/
-
-  !>
-  !> @brief Generate a sequence of linear-spaced integer numbers.
-  !>
-  !> @details Used for instance array addressing (indexing).
-  !>
-  !> @param   X0
-  !> @param   X1
-  !> @param   DX
-  !> @returns IX
-  !>
-  !> @author S. Zieger
-  !> @date   15-Feb-2011
-  !>
-  FUNCTION IRANGE(X0,X1,DX) RESULT(IX)
-    !/
-    !/                  +-----------------------------------+
-    !/                  | WAVEWATCH III           NOAA/NCEP |
-    !/                  |           S. Zieger               |
-    !/                  |                        FORTRAN 90 |
-    !/                  | Last update :         15-Feb-2011 |
-    !/                  +-----------------------------------+
-    !/
-    !/    15-Feb-2011 : Origination                         ( version 4.04 )
-    !/                                                        (S. Zieger)
-    !/
-    !  1. Purpose :
-    !         Generate a sequence of linear-spaced integer numbers.
-    !         Used for instance array addressing (indexing).
-    !
-    !/
-    IMPLICIT NONE
-    INTEGER, INTENT(IN)  :: X0, X1, DX
-    INTEGER, ALLOCATABLE :: IX(:)
-    INTEGER              :: N
-    INTEGER              :: I
-    !
-    N = INT(REAL(X1-X0)/REAL(DX))+1
-    ALLOCATE(IX(N))
-    DO I = 1, N
-      IX(I) = X0+ (I-1)*DX
-    END DO
-    !/
-  END FUNCTION IRANGE
   !/ ------------------------------------------------------------------- /
   !/
 

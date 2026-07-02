@@ -49,7 +49,6 @@ MODULE W3SWLDMD
   !      W3SWL4    Subr. Public   Ardhuin et al (2010+) swell dissipation
   !      W3SWL6    Subr. Public   Babanin (2011) swell dissipation
   !
-  !      IRANGE    Func. Private  Generate a sequence of integer values
   !     ----------------------------------------------------------------
   !
   !  4. Subroutines and functions used :
@@ -71,7 +70,6 @@ MODULE W3SWLDMD
   !/ ------------------------------------------------------------------- /
   !/
   PUBLIC  :: W3SWL4, W3SWL6
-  PRIVATE :: IRANGE
   !/
 CONTAINS
   !/ ------------------------------------------------------------------- /
@@ -126,7 +124,6 @@ CONTAINS
     !
     !      Name      Type  Module   Description
     !     ----------------------------------------------------------------
-    !      IRANGE    Func. W3SWLDMD
     !      STRACE    Subr. W3SERVMD Subroutine tracing.
     !     ----------------------------------------------------------------
     !
@@ -174,7 +171,7 @@ CONTAINS
 #ifdef W3_S
     INTEGER, SAVE     :: IENT = 0
 #endif
-    INTEGER           :: IKN(NK), ITH
+    INTEGER           :: IKN(NK), ITH, IK
     REAL, PARAMETER   :: VA = 1.4E-5 ! Air kinematic viscosity (used in WAM).
     REAL              :: EB(NK), WN2(NSPEC), EMEAN
     REAL              :: FE, AORB, RE, RECRIT, UOSIG, CDSV
@@ -185,7 +182,9 @@ CONTAINS
     CALL STRACE (IENT, 'W3SWL4')
 #endif
     !
-    IKN = IRANGE(1,NSPEC,NTH)
+    DO IK = 1, NK
+      IKN(IK) = 1 + (IK-1)*NTH
+    END DO
     D   = 0.
     WN2 = 0.
     !
@@ -288,7 +287,6 @@ CONTAINS
     !
     !      Name      Type  Module   Description
     !     ----------------------------------------------------------------
-    !      IRANGE    Func. W3SWLDMD
     !      STRACE    Subr. W3SERVMD Subroutine tracing.
     !     ----------------------------------------------------------------
     !
@@ -412,53 +410,6 @@ CONTAINS
     !/ End of W3SWL6 ----------------------------------------------------- /
     !/
   END SUBROUTINE W3SWL6
-  !/ ------------------------------------------------------------------- /
-  !/
-  !>
-  !> @brief Generate a linear-spaced sequence of integer numbers.
-  !>
-  !> @details Used for array addressing (indexing).
-  !>
-  !> @param   X0
-  !> @param   X1
-  !> @param   DX
-  !> @returns IX
-  !>
-  !> @author H. L. Tolman
-  !> @author S. Zieger
-  !> @date 15-Feb-2011
-  !>
-  FUNCTION IRANGE(X0,X1,DX) RESULT(IX)
-    !/
-    !/                  +-----------------------------------+
-    !/                  | WAVEWATCH III           NOAA/NCEP |
-    !/                  |           H. L. Tolman            |
-    !/                  |           S. Zieger               |
-    !/                  |                        FORTRAN 90 |
-    !/                  | Last update :         15-Feb-2011 |
-    !/                  +-----------------------------------+
-    !/
-    !/    15-Feb-2011 : Origination from W3SRC6MD          ( version 4.07 )
-    !/                                                        (S. Zieger)
-    !/
-    !  1. Purpose :
-    !         Generate a linear-spaced sequence of integer
-    !         numbers. Used for array addressing (indexing).
-    !
-    !/
-    IMPLICIT NONE
-    INTEGER, INTENT(IN)  :: X0, X1, DX
-    INTEGER, ALLOCATABLE :: IX(:)
-    INTEGER              :: N
-    INTEGER              :: I
-    !
-    N = INT(REAL(X1-X0)/REAL(DX))+1
-    ALLOCATE(IX(N))
-    DO I = 1, N
-      IX(I) = X0+ (I-1)*DX
-    END DO
-    !/
-  END FUNCTION IRANGE
   !/ ------------------------------------------------------------------- /
   !/
 END MODULE W3SWLDMD
