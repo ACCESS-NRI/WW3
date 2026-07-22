@@ -73,7 +73,6 @@ MODULE W3SRC6MD
   !      W3SIN6    Subr. Public   Observation-based wind input.
   !      W3SDS6    Subr. Public   Observation-based dissipation.
   !
-  !      IRANGE    Func. Private  Generate a sequence of integer values.
   !      LFACTOR   Func. Private  Calculate reduction factor for Sin.
   !      TAUWINDS  Func. Private  Normal stress calculation for Sin.
   !     ----------------------------------------------------------------
@@ -97,7 +96,7 @@ MODULE W3SRC6MD
   !/ ------------------------------------------------------------------- /
   !/
   PUBLIC  ::  W3SPR6, W3SIN6, W3SDS6
-  PRIVATE ::  LFACTOR, TAUWINDS, IRANGE
+  PRIVATE ::  LFACTOR, TAUWINDS
 CONTAINS
   !/ ------------------------------------------------------------------- /
 
@@ -343,7 +342,6 @@ CONTAINS
     !      Name      Type  Module   Description
     !     ----------------------------------------------------------------
     !      LFACTOR   Subr. W3SRC6MD
-    !      IRANGE    Func. W3SRC6MD
     !      STRACE    Subr. W3SERVMD Subroutine tracing.
     !     ----------------------------------------------------------------
     !
@@ -435,8 +433,9 @@ CONTAINS
     ECOS2  = ECOS(1:NSPEC)         ! Only indices from 1 to NSPEC
     ESIN2  = ESIN(1:NSPEC)         ! are requested.
     !
-    IKN    = IRANGE(1,NSPEC,NTH)   ! Index vector for elements of 1 ... NK
-    !                                    ! such that e.g. SIG(1:NK) = SIG2(IKN).
+    DO IK = 1, NK
+      IKN(IK) = 1 + (IK-1)*NTH
+    END DO
     DSII2  = DDEN2 / DTH / SIG2    ! Frequency bandwidths (int.)  (rad)
     DSII   = DSII2(IKN)
     SIG    = SIG2(IKN)
@@ -673,9 +672,9 @@ CONTAINS
 #endif
     !
     !/ 0) --- Initialize essential parameters ---------------------------- /
-    IKN     = IRANGE(1,NSPEC,NTH)    ! Index vector for elements of 1,
-    !                                      ! 2,..., NK such that for example
-    !                                      ! SIG(1:NK) = SIG2(IKN).
+    DO IK = 1, NK
+      IKN(IK) = 1 + (IK-1)*NTH
+    END DO
     FREQ    = SIG2(IKN)/TPI
     ANAR    = 1.0
     BNT     = 0.035**2
@@ -833,7 +832,6 @@ CONTAINS
     !      Name      Type  Scope    Description
     !     ----------------------------------------------------------------
     !      STRACE    Subr. W3SERVMD Subroutine tracing.
-    !      IRANGE    Func. Private  Index generator (ie, array addressing)
     !      TAUWINDS  Func. Private  Normal stress calculation (TAU_NRM)
     !     ----------------------------------------------------------------
     !
@@ -899,7 +897,9 @@ CONTAINS
     NK10Hz = MAX(NK,NK10Hz)
     !
     ALLOCATE(IK10Hz(NK10Hz))
-    IK10Hz = REAL( IRANGE(1,NK10Hz,1) )
+    DO IK = 1, NK10Hz
+      IK10Hz(IK) = REAL(IK)
+    END DO
     !
     ALLOCATE(SIG10Hz(NK10Hz))
     ALLOCATE(CINV10Hz(NK10Hz))
@@ -1108,7 +1108,6 @@ CONTAINS
     !      Name      Type  Scope    Description
     !     ----------------------------------------------------------------
     !      STRACE    Subr. W3SERVMD Subroutine tracing.
-    !      IRANGE    Func. Private  Index generator (ie, array addressing)
     !      TAUWINDS  Func. Private  Normal stress calculation (TAU_NRM)
     !     ----------------------------------------------------------------
     !
@@ -1134,7 +1133,7 @@ CONTAINS
     INTEGER, SAVE     :: IENT = 0
 #endif
     REAL, PARAMETER   :: FRQMAX  = 10.  ! Upper freq. limit to extrapolate to.
-    INTEGER           :: NK10Hz
+    INTEGER           :: NK10Hz, I
     !
     REAL              :: ECOS2(NSPEC), ESIN2(NSPEC)
     REAL, ALLOCATABLE :: IK10Hz(:), SIG10Hz(:), CINV10Hz(:)
@@ -1152,7 +1151,9 @@ CONTAINS
     NK10Hz = MAX(NK,NK10Hz)
     !
     ALLOCATE(IK10Hz(NK10Hz))
-    IK10Hz = REAL( IRANGE(1,NK10Hz,1) )
+    DO I = 1, NK10Hz
+      IK10Hz(I) = REAL(I)
+    END DO
     !
     ALLOCATE(SIG10Hz(NK10Hz))
     ALLOCATE(CINV10Hz(NK10Hz))
@@ -1195,52 +1196,6 @@ CONTAINS
     TAUNWY = TAUWINDS(SDENSY10Hz,CINV10Hz,DSII10Hz)   ! y-component
     !/
   END SUBROUTINE TAU_WAVE_ATMOS
-  !/ ------------------------------------------------------------------- /
-  !/
-
-  !>
-  !> @brief Generate a sequence of linear-spaced integer numbers.
-  !>
-  !> @details Used for instance array addressing (indexing).
-  !>
-  !> @param   X0
-  !> @param   X1
-  !> @param   DX
-  !> @returns IX
-  !>
-  !> @author S. Zieger
-  !> @date   15-Feb-2011
-  !>
-  FUNCTION IRANGE(X0,X1,DX) RESULT(IX)
-    !/
-    !/                  +-----------------------------------+
-    !/                  | WAVEWATCH III           NOAA/NCEP |
-    !/                  |           S. Zieger               |
-    !/                  |                        FORTRAN 90 |
-    !/                  | Last update :         15-Feb-2011 |
-    !/                  +-----------------------------------+
-    !/
-    !/    15-Feb-2011 : Origination                         ( version 4.04 )
-    !/                                                        (S. Zieger)
-    !/
-    !  1. Purpose :
-    !         Generate a sequence of linear-spaced integer numbers.
-    !         Used for instance array addressing (indexing).
-    !
-    !/
-    IMPLICIT NONE
-    INTEGER, INTENT(IN)  :: X0, X1, DX
-    INTEGER, ALLOCATABLE :: IX(:)
-    INTEGER              :: N
-    INTEGER              :: I
-    !
-    N = INT(REAL(X1-X0)/REAL(DX))+1
-    ALLOCATE(IX(N))
-    DO I = 1, N
-      IX(I) = X0+ (I-1)*DX
-    END DO
-    !/
-  END FUNCTION IRANGE
   !/ ------------------------------------------------------------------- /
   !/
 
