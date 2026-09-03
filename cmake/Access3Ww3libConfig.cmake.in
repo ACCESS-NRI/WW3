@@ -2,8 +2,8 @@
 
 @PACKAGE_INIT@
 
-if(@OPENMP@)
-  find_dependency(OpenMP REQUIRED)
+if(@WW3_OPENMP@)
+  find_dependency(OpenMP REQUIRED COMPONENTS Fortran)
 endif()
 
 find_dependency(NetCDF 4.7.3 REQUIRED Fortran)
