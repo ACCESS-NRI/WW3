@@ -389,7 +389,9 @@ contains
     ! Determine if restarts are written at the end of the run
     call NUOPC_CompAttributeGet(gcomp, name="write_restart_at_endofrun", value=cvalue, isPresent=isPresent, isSet=isSet, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
-    if (isPresent .and. isSet) restart_eor=(trim(cvalue)==".true.")
+    if (isPresent .and. isSet) then
+       read(cvalue,*) restart_eor
+    end if
     write(logmsg,*) restart_eor
     call ESMF_LogWrite('WW3_cap:write_restart_at_endofrun = '//trim(logmsg), ESMF_LOGMSG_INFO)
     call advertise_fields(importState, exportState, flds_scalar_name, rc)
