@@ -100,6 +100,8 @@ module wav_comp_nuopc
                                                            !! using ESMF. If restart_option is present as config
                                                            !! option, user_restalarm will be true and will be
                                                            !! set using restart_option, restart_n and restart_ymd
+  logical                 :: restart_eor = .false.         !< logical flag to write restarts at the end of the run,
+                                                           !! set using write_restart_at_endofrun
   integer :: ymd                                           !< current year-month-day
   integer :: tod                                           !< current time of day (sec)
   integer :: time0(2)                                      !< start time stored as yyyymmdd,hhmmss
@@ -383,6 +385,15 @@ contains
     if (runtimelog) then
       call ufs_file_setLogUnit('./log.ww3.timer',nu_timer,runtimelog)
     end if
+
+    ! Determine if restarts are written at the end of the run
+    call NUOPC_CompAttributeGet(gcomp, name="write_restart_at_endofrun", value=cvalue, isPresent=isPresent, isSet=isSet, rc=rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    if (isPresent .and. isSet) then
+       read(cvalue,*) restart_eor
+    end if
+    write(logmsg,*) restart_eor
+    call ESMF_LogWrite('WW3_cap:write_restart_at_endofrun = '//trim(logmsg), ESMF_LOGMSG_INFO)
     call advertise_fields(importState, exportState, flds_scalar_name, rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
@@ -1146,6 +1157,18 @@ contains
       endif
     else
       rstwr = .false.
+    end if
+
+    if (restart_eor) then
+      ! Determine if this is the end of the run
+      call ESMF_ClockGetAlarm(clock, alarmname='alarm_stop', alarm=alarm, rc=rc)
+      if (ChkErr(rc,__LINE__,u_FILE_u)) return
+      if (ESMF_AlarmIsRinging(alarm, rc=rc)) then
+        if (ChkErr(rc,__LINE__,u_FILE_u)) return
+        rstwr = .true.
+        call ESMF_AlarmRingerOff( alarm, rc=rc )
+        if (ChkErr(rc,__LINE__,u_FILE_u)) return
+      endif
     end if
 
     if (user_histalarm) then
