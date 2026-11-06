@@ -209,19 +209,13 @@ if(WW3_ACCESS3)
   # way of handling them in CMake
   target_include_directories(ww3lib PUBLIC "$<INSTALL_INTERFACE:${CMAKE_INSTALL_MODULEDIR}/access-ww3>")
   get_target_property(ww3_moddir ww3lib Fortran_MODULE_DIRECTORY)
-  if(CMAKE_Fortran_COMPILER_ID MATCHES "NVHPC")
-    # nvfortran .mod files are not self-contained: using a module also needs
-    # the .mod files of every module it uses, so install them all
-    install(DIRECTORY ${ww3_moddir}/
-      DESTINATION ${CMAKE_INSTALL_MODULEDIR}/access-ww3
-      COMPONENT AccessWW3_Development
-    )
-  else()
-    install(FILES ${ww3_moddir}/wav_comp_nuopc.mod
-      DESTINATION ${CMAKE_INSTALL_MODULEDIR}/access-ww3
-      COMPONENT AccessWW3_Development
-    )
-  endif()
+  # nvfortran .mod files are not self-contained: using a module also needs
+  # the .mod files of every module it uses, so install them all
+  install(DIRECTORY ${ww3_moddir}/
+    DESTINATION ${CMAKE_INSTALL_MODULEDIR}/access-ww3
+    COMPONENT AccessWW3_Development
+    FILES_MATCHING PATTERN "*.mod"
+  )
   install(EXPORT Ww3libTargets
     FILE Ww3libTargets.cmake
     NAMESPACE Access3::
